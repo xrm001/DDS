@@ -38,3 +38,11 @@ export const EVAL_DIMENSIONS = [
   { key: 'score_technical', label: '技术' },
   { key: 'score_design', label: '设计' },
 ];
+
+// 评价维度（接单人视角 - 对下单人/订单的评价）
+export const RECEIVER_EVAL_DIMENSIONS = [
+  { key: 'score_requirement_clarity', label: '需求描述' },
+  { key: 'score_attachment_quality', label: '附件提供' },
+  { key: 'score_communication', label: '沟通' },
+  { key: 'score_confirmation_timeliness', label: '确认及时性' },
+];

@@ -53,6 +53,16 @@ function DetailModal({ open, order, onCancel }) {
         <Descriptions.Item label="需求描述" span={2}>
           {order.requirement_desc || '-'}
         </Descriptions.Item>
+        {order.status === 5 && order.reject_reason && (
+          <Descriptions.Item label="拒绝理由" span={2}>
+            <span style={{ color: '#ff4d4f' }}>{order.reject_reason}</span>
+            {order.rejected_at && (
+              <span style={{ color: '#8c8c8c', marginLeft: 12, fontSize: 12 }}>
+                ({order.rejected_at})
+              </span>
+            )}
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="附件" span={2}>
           {mockAttachments.length > 0 ? (
             <Image.PreviewGroup>

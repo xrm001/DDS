@@ -29,9 +29,15 @@ function Login() {
         setUserData(result.data);
         // 将用户信息写入 localStorage 供后续页面使用
         localStorage.setItem('dds_user', JSON.stringify(result.data));
-        // 短暂延迟后跳转到下单人主页
+        // 按角色分流跳转：负责人 -> /manager，接单人 -> /receiver，否则 -> /orderer
+        const roles = Array.isArray(result.data?.roles) ? result.data.roles : [];
+        const hasRole = (kw) =>
+          roles.some((r) => new RegExp(kw).test(r?.role_name || ''));
+        let targetPath = '/orderer';
+        if (hasRole('负责人|经理|主管|管理员')) targetPath = '/manager';
+        else if (hasRole('接单人')) targetPath = '/receiver';
         setTimeout(() => {
-          navigate('/orderer');
+          navigate(targetPath);
         }, 800);
       }
     } catch (error) {
