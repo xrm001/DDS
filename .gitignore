@@ -1,0 +1,40 @@
+# ========== 环境变量文件 ==========
+.env
+.env.local
+.env.*.local
+
+# ========== 依赖 ==========
+node_modules/
+**/node_modules/
+
+# ========== 构建产物 ==========
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========== IDE ==========
+.vscode/
+.idea/
+.qoder/
+*.swp
+*.swo
+
+# ========== 系统文件 ==========
+.DS_Store
+Thumbs.db
+
+# ========== 临时/缓存 ==========
+*.tmp
+*.cache
+.npm
+.eslintcache
+
+# ========== 测试 ==========
+coverage/
+
+# ========== 本地调试脚本 ==========
+check_db.js
