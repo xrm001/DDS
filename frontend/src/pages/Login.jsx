@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Login() {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -25,7 +27,12 @@ function Login() {
       if (result.success) {
         setLoginSuccess(true);
         setUserData(result.data);
-        // 暂时不执行跳转，待后续页面开发完成后再实现
+        // 将用户信息写入 localStorage 供后续页面使用
+        localStorage.setItem('dds_user', JSON.stringify(result.data));
+        // 短暂延迟后跳转到下单人主页
+        setTimeout(() => {
+          navigate('/orderer');
+        }, 800);
       }
     } catch (error) {
       console.error('登录请求异常：', error);
