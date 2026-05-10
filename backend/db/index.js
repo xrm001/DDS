@@ -1,29 +1,30 @@
 const mysql = require('mysql2/promise');
 
+// 创建 MySQL 连接池（连接阿里云 RDS）
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  ssl: false, // 阿里云RDS MySQL 需禁用SSL
+  ssl: false, // 阿里云 RDS MySQL 需禁用 SSL
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 10, // 最大连接数
   queueLimit: 0,
-  enableKeepAlive: true,
+  enableKeepAlive: true, // 启用长连接保活
   keepAliveInitialDelay: 0
 });
 
-// 测试连接
+// 启动时测试数据库连接
 pool.getConnection()
   .then(conn => {
-    console.log('[DB] RDS 数据库连接成功:', process.env.DB_DATABASE);
+    console.log('[数据库] RDS 连接成功，当前库：', process.env.DB_DATABASE);
     conn.release();
   })
   .catch(err => {
-    console.error('[DB] RDS 数据库连接失败:', err.message);
-    console.error('[DB] 错误详情:', err);
-    console.error('[DB] 当前配置:', {
+    console.error('[数据库] RDS 连接失败：', err.message);
+    console.error('[数据库] 错误详情：', err);
+    console.error('[数据库] 当前配置：', {
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,
       user: process.env.DB_USER,

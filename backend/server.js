@@ -25,6 +25,6 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`[DDS Backend] Server running on http://localhost:${PORT}`);
-  console.log(`[DDS Backend] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`[DDS 后端] 服务已启动：http://localhost:${PORT}`);
+  console.log(`[DDS 后端] 运行环境：${process.env.NODE_ENV || 'development'}`);
 });

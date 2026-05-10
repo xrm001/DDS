@@ -23,7 +23,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Step 1: 查询 person 表
+    // 步骤一：查询 person 表中用户名是否存在
     const [users] = await db.execute(
       'SELECT `id`, `username`, `password`, `real_name` FROM `person` WHERE `username` = ? LIMIT 1',
       [username]
@@ -39,7 +39,7 @@ router.post('/login', async (req, res) => {
 
     const user = users[0];
 
-    // Step 2: 查询 person_roles 表，确认用户是否有角色
+    // 步骤二：查询 person_roles 表，确认该用户是否已分配角色
     const [roles] = await db.execute(
       `SELECT r.id, r.role_code, r.role_name
        FROM roles r
@@ -56,10 +56,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Step 3: 比对 password（支持 bcrypt 和明文兼容）
+    // 步骤三：比对密码（同时支持 bcrypt 加密密码与明文密码）
     let isMatch = false;
     if (user.password.startsWith('$2')) {
-      // bcrypt 哈希格式
+      // bcrypt 哈希格式密码
       isMatch = await bcrypt.compare(password, user.password);
     } else {
       // 明文密码（兼容旧数据）
@@ -74,7 +74,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Step 4: 登录成功
+    // 步骤四：登录成功，返回用户信息与角色列表
     res.json({
       success: true,
       code: 'LOGIN_SUCCESS',
@@ -88,7 +88,7 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Auth] Login error:', error);
+    console.error('[登录] 服务异常：', error);
     res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',

@@ -28,7 +28,7 @@ function Login() {
         // 暂时不执行跳转，待后续页面开发完成后再实现
       }
     } catch (error) {
-      console.error('Login request error:', error);
+      console.error('登录请求异常：', error);
       setMessage('网络请求失败，请检查服务器连接');
       setMessageType('error');
     } finally {
