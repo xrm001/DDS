@@ -4,6 +4,19 @@ export const TASK_TYPES = [
   { value: 2, label: '全案设计', code: 'full_case_design' },
   { value: 3, label: '3D设计', code: '3d_design' },
   { value: 4, label: '摄影任务', code: 'photography' },
+  { value: 5, label: '护肤新品', code: 'skincare' },
+  { value: 6, label: '香水新品', code: 'perfume' },
+  { value: 7, label: 'banner', code: 'banner' },
+  { value: 8, label: '医药新品', code: 'pharmaceutical' },
+];
+
+// 运营下单人专用任务类型（去掉了平面设计、3D设计、摄影任务）
+export const OPERATION_TASK_TYPES = [
+  { value: 2, label: '全案设计', code: 'full_case_design' },
+  { value: 5, label: '护肤新品', code: 'skincare' },
+  { value: 6, label: '香水新品', code: 'perfume' },
+  { value: 7, label: 'banner', code: 'banner' },
+  { value: 8, label: '医药新品', code: 'pharmaceutical' },
 ];
 
 // 订单类型

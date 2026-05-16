@@ -1,6 +1,9 @@
-import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm } from 'antd';
-import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from 'antd';
+import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES } from '../../constants/enums';
+import { useState } from 'react';
+import ReceiverQueueModal from './modals/ReceiverQueueModal';
+import CutInLineModal from './modals/CutInLineModal';
 
 // 查找任务类型标签
 const getTaskTypeLabel = (id) => TASK_TYPES.find((t) => t.value === id)?.label || '-';
@@ -9,8 +12,29 @@ const getPriority = (v) => PRIORITIES.find((p) => p.value === v);
 // 订单列表表格
 // props:
 //   dataSource: 订单数组
-//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat
-function OrderTable({ dataSource, onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance }) {
+//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance, onCutInLine
+//   allOrders: 所有订单数据（用于计算排队情况）
+function OrderTable({ 
+  dataSource, 
+  onEdit, 
+  onRecall, 
+  onDetail, 
+  onModify, 
+  onEvaluate, 
+  onChat, 
+  onAcceptance,
+  onCutInLine,
+  allOrders = [] 
+}) {
+  const [queueModalOpen, setQueueModalOpen] = useState(false);
+  const [cutInLineModalOpen, setCutInLineModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedReceiver, setSelectedReceiver] = useState(null);
+
+  // 获取接单人的所有订单
+  const getReceiverOrders = (receiverId) => {
+    return allOrders.filter(o => o.receiver_id === receiverId);
+  };
   const columns = [
     {
       title: '订单编号',
@@ -43,16 +67,6 @@ function OrderTable({ dataSource, onEdit, onRecall, onDetail, onModify, onEvalua
       ),
     },
     {
-      title: '优先级',
-      dataIndex: 'priority',
-      key: 'priority',
-      width: 80,
-      render: (p) => {
-        const pri = getPriority(p);
-        return pri ? <Tag color={pri.color}>{pri.label}</Tag> : '-';
-      },
-    },
-    {
       title: '下单时间',
       dataIndex: 'created_at',
       key: 'created_at',
@@ -69,19 +83,28 @@ function OrderTable({ dataSource, onEdit, onRecall, onDetail, onModify, onEvalua
       title: '订单状态',
       dataIndex: 'status',
       key: 'status',
-      width: 130,
+      width: 180,
       render: (s, record) => {
         const st = ORDER_STATUS[s];
+        const isQueuing = s === 1 && record.receiver_id; // 待接单且有接单人 = 排队中
+        
         // 只要产生过审核记录（提交过待验收）就显示图标，可查看审核历史
         const hasAcceptanceHistory =
           Array.isArray(record.acceptance_history) && record.acceptance_history.length > 0;
         const hasPending =
           hasAcceptanceHistory &&
           record.acceptance_history.some((h) => h.review_result === 'pending');
+
+        const statusTag = isQueuing ? (
+          <Tag color="warning">排队中</Tag>
+        ) : (
+          <Tag color={st.color}>{st.label}</Tag>
+        );
+
         if (hasAcceptanceHistory) {
           return (
             <Space size={4}>
-              <Tag color={st.color}>{st.label}</Tag>
+              {statusTag}
               <Tooltip title={hasPending ? '有待审核内容，点击处理' : '点击查看审核历史'}>
                 <AuditOutlined
                   onClick={() => onAcceptance(record)}
@@ -96,15 +119,74 @@ function OrderTable({ dataSource, onEdit, onRecall, onDetail, onModify, onEvalua
             </Space>
           );
         }
-        return <Tag color={st.color}>{st.label}</Tag>;
+
+        // 排队中且不是自己的订单，显示插队按钮
+        if (isQueuing && record.creator_id !== 2) { // 假设当前用户id为2
+          return (
+            <Space size={4}>
+              {statusTag}
+              <Button
+                type="link"
+                size="small"
+                icon={<ArrowUpOutlined />}
+                style={{ padding: 0, height: 'auto', color: '#fa8c16' }}
+                onClick={() => {
+                  setSelectedOrder(record);
+                  setCutInLineModalOpen(true);
+                }}
+              >
+                插队
+              </Button>
+            </Space>
+          );
+        }
+
+        return statusTag;
       },
     },
     {
       title: '接单人',
       dataIndex: 'receiver_name',
       key: 'receiver_name',
-      width: 100,
-      render: (v) => v || <span style={{ color: '#bfbfbf' }}>待派单</span>,
+      width: 120,
+      render: (v, record) => {
+        if (!v) return <span style={{ color: '#bfbfbf' }}>待派单</span>;
+        
+        const receiverOrders = getReceiverOrders(record.receiver_id);
+        
+        return (
+          <Popover
+            content={
+              <div style={{ width: 200 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{v} 的订单</div>
+                <div style={{ fontSize: 12, color: '#595959' }}>
+                  <div>进行中：{receiverOrders.filter(o => o.status === 2).length} 单</div>
+                  <div style={{ marginTop: 4 }}>排队中：{receiverOrders.filter(o => o.status === 1).length} 单</div>
+                </div>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ marginTop: 8, padding: 0 }}
+                  onClick={() => {
+                    setSelectedReceiver({
+                      name: v,
+                      id: record.receiver_id,
+                      orders: receiverOrders
+                    });
+                    setQueueModalOpen(true);
+                  }}
+                >
+                  查看详情
+                </Button>
+              </div>
+            }
+            title={null}
+            trigger="hover"
+          >
+            <span style={{ cursor: 'pointer', color: '#1677ff' }}>{v}</span>
+          </Popover>
+        );
+      },
     },
     {
       title: '沟通消息',
@@ -216,19 +298,47 @@ function OrderTable({ dataSource, onEdit, onRecall, onDetail, onModify, onEvalua
   ];
 
   return (
-    <Table
-      rowKey="id"
-      size="middle"
-      columns={columns}
-      dataSource={dataSource}
-      scroll={{ x: 1700, y: 420 }}
-      pagination={{
-        defaultPageSize: 10,
-        pageSizeOptions: [10, 20, 50],
-        showSizeChanger: true,
-        showTotal: (total) => `共 ${total} 条`,
-      }}
-    />
+    <>
+      <Table
+        rowKey="id"
+        size="middle"
+        columns={columns}
+        dataSource={dataSource}
+        scroll={{ x: 1700, y: 420 }}
+        pagination={{
+          defaultPageSize: 10,
+          pageSizeOptions: [10, 20, 50],
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 条`,
+        }}
+      />
+      
+      {/* 接单人排队详情弹窗 */}
+      {selectedReceiver && (
+        <ReceiverQueueModal
+          open={queueModalOpen}
+          receiverName={selectedReceiver.name}
+          queueOrders={selectedReceiver.orders}
+          onCancel={() => setQueueModalOpen(false)}
+        />
+      )}
+      
+      {/* 插队申请弹窗 */}
+      {selectedOrder && (
+        <CutInLineModal
+          open={cutInLineModalOpen}
+          currentOrder={selectedOrder}
+          receiverName={selectedOrder.receiver_name}
+          inProgressOrders={getReceiverOrders(selectedOrder.receiver_id).filter(o => o.status === 2)}
+          queueOrders={getReceiverOrders(selectedOrder.receiver_id).filter(o => o.status === 1 && o.id !== selectedOrder.id)}
+          onCancel={() => setCutInLineModalOpen(false)}
+          onOk={() => {
+            setCutInLineModalOpen(false);
+            onCutInLine?.(selectedOrder);
+          }}
+        />
+      )}
+    </>
   );
 }
 

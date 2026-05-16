@@ -1,6 +1,6 @@
 import { Form, Input, Select, DatePicker, Upload, Tag, Button, Row, Col, Card, Space, Tooltip } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { TASK_TYPES, PRIORITIES } from '../../constants/enums';
+import { TASK_TYPES, OPERATION_TASK_TYPES } from '../../constants/enums';
 import { REGIONS } from '../../constants/regions';
 
 const { TextArea } = Input;
@@ -12,11 +12,20 @@ const { TextArea } = Input;
 //   onChange(index, partial): 字段变更
 //   onRemove(index): 删除此任务
 //   showRemove: 是否显示删除按钮（仅 1 项时隐藏）
-function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef }) {
+//   userRoles: 用户角色数组，用于判断是否为运营下单人
+function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, userRoles }) {
   // 通用字段修改
   const update = (partial) => onChange(index, partial);
 
   const isModify = task.orderType === 2;
+
+  // 判断是否为运营下单人角色
+  const isOperationOrderer = userRoles?.some(r => 
+    r.role_name === '运营下单人' || r.role_code === 'operation_orderer'
+  );
+
+  // 根据角色选择任务类型
+  const taskTypeOptions = isOperationOrderer ? OPERATION_TASK_TYPES : TASK_TYPES;
 
   // 文件上传（仅前端展示，不做真实上传）
   const beforeUpload = () => false;
@@ -76,30 +85,36 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef }
             />
           </Form.Item>
         </Col>
-        <Col span={8}>
-          <Form.Item label="客户名称" required style={{ marginBottom: 12 }}>
-            <Input
-              placeholder="请输入客户名称"
-              value={task.customer_name}
-              onChange={(e) => update({ customer_name: e.target.value })}
-              maxLength={100}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item label="客户国籍/地区" required style={{ marginBottom: 12 }}>
-            <Select
-              showSearch
-              placeholder="请选择国家或地区"
-              value={task.customer_region || undefined}
-              onChange={(v) => update({ customer_region: v })}
-              options={REGIONS.map((r) => ({ value: r, label: r }))}
-              filterOption={(input, option) =>
-                option.label.toLowerCase().includes(input.toLowerCase())
-              }
-            />
-          </Form.Item>
-        </Col>
+        
+        {/* 运营下单人隐藏客户名称和客户国籍 */}
+        {!isOperationOrderer && (
+          <>
+            <Col span={8}>
+              <Form.Item label="客户名称" required style={{ marginBottom: 12 }}>
+                <Input
+                  placeholder="请输入客户名称"
+                  value={task.customer_name}
+                  onChange={(e) => update({ customer_name: e.target.value })}
+                  maxLength={100}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="客户国籍/地区" required style={{ marginBottom: 12 }}>
+                <Select
+                  showSearch
+                  placeholder="请选择国家或地区"
+                  value={task.customer_region || undefined}
+                  onChange={(v) => update({ customer_region: v })}
+                  options={REGIONS.map((r) => ({ value: r, label: r }))}
+                  filterOption={(input, option) =>
+                    option.label.toLowerCase().includes(input.toLowerCase())
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </>
+        )}
 
         <Col span={8}>
           <Form.Item label="任务类型" required style={{ marginBottom: 12 }}>
@@ -107,17 +122,7 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef }
               placeholder="请选择任务类型"
               value={task.task_type_id || undefined}
               onChange={(v) => update({ task_type_id: v })}
-              options={TASK_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={8}>
-          <Form.Item label="优先级" required style={{ marginBottom: 12 }}>
-            <Select
-              placeholder="请选择优先级"
-              value={task.priority || undefined}
-              onChange={(v) => update({ priority: v })}
-              options={PRIORITIES.map((p) => ({ value: p.value, label: p.label }))}
+              options={taskTypeOptions.map((t) => ({ value: t.value, label: t.label }))}
             />
           </Form.Item>
         </Col>

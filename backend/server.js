@@ -7,6 +7,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // 路由
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

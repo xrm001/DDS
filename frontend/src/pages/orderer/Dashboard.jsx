@@ -11,6 +11,8 @@ import {
   StatusBar,
   YearlyBar,
   CompleteRateGauge,
+  ReceiverStatsBar,
+  ReceiverStatsBarWithLabels,
 } from '../../components/orderer/charts';
 import { DASHBOARD_DATA } from '../../mock/dashboard';
 
@@ -63,9 +65,18 @@ function Dashboard() {
           </Card>
         </Col>
       </Row>
-      <Card title="任务类型分布">
-        <TaskTypePie data={current.taskTypeDist} />
-      </Card>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card title="任务类型分布">
+            <TaskTypePie data={current.taskTypeDist} />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="接单人接单统计">
+            <ReceiverStatsBar data={current.receiverStats} />
+          </Card>
+        </Col>
+      </Row>
     </>
   );
 
@@ -82,6 +93,11 @@ function Dashboard() {
           <StatusBar labels={monthly.statusDist.labels} values={monthly.statusDist.values} />
         </Card>
       </Col>
+      <Col span={24} style={{ marginTop: 16 }}>
+        <Card title="本月接单人接单统计">
+          <ReceiverStatsBarWithLabels labels={monthly.receiverStats.labels} values={monthly.receiverStats.values} />
+        </Card>
+      </Col>
     </Row>
   );
 
@@ -96,6 +112,11 @@ function Dashboard() {
       <Col span={10}>
         <Card title="累计完成率">
           <CompleteRateGauge rate={historical.completeRate} />
+        </Card>
+      </Col>
+      <Col span={24} style={{ marginTop: 16 }}>
+        <Card title="历史接单人接单统计">
+          <ReceiverStatsBarWithLabels labels={historical.receiverStats.labels} values={historical.receiverStats.values} />
         </Card>
       </Col>
     </Row>

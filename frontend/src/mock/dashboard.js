@@ -15,6 +15,13 @@ export const DASHBOARD_DATA = {
       { name: '3D设计', value: 3 },
       { name: '摄影任务', value: 2 },
     ],
+    // 接单人接单统计（当前）- 按任务类型分组
+    receiverStats: [
+      { name: '3D设计', value: 3 },
+      { name: '平面设计', value: 4 },
+      { name: '全案设计', value: 2 },
+      { name: '摄影任务', value: 1 },
+    ],
   },
   // 月度统计
   monthly: {
@@ -28,6 +35,11 @@ export const DASHBOARD_DATA = {
       labels: ['待派单', '待接单', '进行中', '待验收', '已完成', '已拒绝', '已取消'],
       values: [2, 1, 3, 1, 3, 1, 1],
     },
+    // 接单人接单统计（月度）- 按任务类型分组
+    receiverStats: {
+      labels: ['3D设计', '平面设计', '全案设计', '摄影任务'],
+      values: [6, 8, 5, 3],
+    },
   },
   // 历史统计
   historical: {
@@ -38,5 +50,10 @@ export const DASHBOARD_DATA = {
     },
     // 累计完成率
     completeRate: 82.5,
+    // 接单人接单统计（历史）- 按任务类型分组
+    receiverStats: {
+      labels: ['3D设计', '平面设计', '全案设计', '摄影任务'],
+      values: [38, 45, 32, 28],
+    },
   },
 };

@@ -1,4 +1,5 @@
-import { Modal, Descriptions, Tag, Image, Empty } from 'antd';
+import { Modal, Descriptions, Tag, Image, Empty, Tooltip } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { TASK_TYPES, PRIORITIES, ORDER_STATUS, ORDER_TYPES } from '../../../constants/enums';
 
 // 订单详情弹框（只读展示所有字段）
@@ -17,6 +18,16 @@ function DetailModal({ open, order, onCancel }) {
         { id: 2, name: `设计稿-${order.order_no}.png`, url: `https://picsum.photos/seed/${order.id}b/200/150` },
       ]
     : [];
+
+  // 附件下载功能
+  const handleDownload = (attachment) => {
+    const link = document.createElement('a');
+    link.href = attachment.url;
+    link.download = attachment.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <Modal
@@ -68,8 +79,45 @@ function DetailModal({ open, order, onCancel }) {
             <Image.PreviewGroup>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {mockAttachments.map((a) => (
-                  <div key={a.id} style={{ textAlign: 'center' }}>
-                    <Image width={120} height={80} src={a.url} style={{ borderRadius: 4, objectFit: 'cover' }} />
+                  <div key={a.id} style={{ textAlign: 'center', position: 'relative' }}>
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <Image 
+                        width={120} 
+                        height={80} 
+                        src={a.url} 
+                        style={{ borderRadius: 4, objectFit: 'cover' }} 
+                      />
+                      {/* 下载按钮 - hover时显示 */}
+                      <Tooltip title={`下载 ${a.name}`}>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(a);
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.5)',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.3s',
+                            cursor: 'pointer',
+                            color: '#fff',
+                            fontSize: 20,
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                        >
+                          <DownloadOutlined />
+                        </div>
+                      </Tooltip>
+                    </div>
                     <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 4, maxWidth: 120 }}>
                       {a.name}
                     </div>

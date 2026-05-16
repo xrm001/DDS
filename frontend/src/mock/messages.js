@@ -22,3 +22,48 @@ export const MOCK_MESSAGES = {
     { id: 1, sender_id: 6, sender_name: '王设计', content: '设计师已离职，此单拒绝', attachment_url: null, created_at: '2025-05-11 10:00:00' },
   ],
 };
+
+// 系统通知数据（订单状态动态）
+export const SYSTEM_NOTIFICATIONS = [
+  {
+    id: 1,
+    type: 'completed',
+    title: '订单已完成',
+    content: '张三的订单 DDS20250509001（新品宣传海报设计）已由王设计完成',
+    created_at: '2025-05-18 16:20:00',
+    is_read: false,
+  },
+  {
+    id: 2,
+    type: 'progress',
+    title: '订单进行中',
+    content: '李建模已开始制作 DDS20250509002（产品3D渲染图）',
+    created_at: '2025-05-10 14:10:00',
+    is_read: false,
+  },
+  {
+    id: 3,
+    type: 'pending',
+    title: '待验收通知',
+    content: '赵全案提交的 DDS20250509003（品牌全案设计）待您验收',
+    created_at: '2025-05-16 09:30:00',
+    is_read: false,
+  },
+  {
+    id: 4,
+    type: 'pending',
+    title: '新订单待接单',
+    content: '系统已分配订单 DDS20250509004（产品摄影）给孙摄影，等待接单',
+    created_at: '2025-05-09 14:00:00',
+    is_read: true,
+  },
+  {
+    id: 5,
+    type: 'completed',
+    title: '订单已完成',
+    content: '李建模已完成 DDS20250510002（汽车模型3D建模）',
+    created_at: '2025-05-08 18:00:00',
+    is_read: true,
+  },
+];
+

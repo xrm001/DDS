@@ -131,3 +131,71 @@ export function CompleteRateGauge({ rate }) {
   };
   return <ReactECharts option={option} style={{ height: 300 }} />;
 }
+
+// 接单人接单统计柱状图
+export function ReceiverStatsBar({ data }) {
+  const option = {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 40, right: 20, top: 20, bottom: 40 },
+    xAxis: { 
+      type: 'category', 
+      data: data.map(item => item.name),
+      axisLabel: { fontSize: 11 }
+    },
+    yAxis: { type: 'value', name: '接单数' },
+    series: [
+      {
+        name: '接单数',
+        type: 'bar',
+        data: data.map(item => item.value),
+        itemStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: '#13c2c2' },
+              { offset: 1, color: '#667eea' },
+            ],
+          },
+          borderRadius: [4, 4, 0, 0],
+        },
+        barWidth: 28,
+      },
+    ],
+  };
+  return <ReactECharts option={option} style={{ height: 320 }} />;
+}
+
+// 接单人接单统计柱状图（带标签和数值数组）
+export function ReceiverStatsBarWithLabels({ labels, values }) {
+  const option = {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 40, right: 20, top: 20, bottom: 40 },
+    xAxis: { 
+      type: 'category', 
+      data: labels,
+      axisLabel: { fontSize: 11 }
+    },
+    yAxis: { type: 'value', name: '接单数' },
+    series: [
+      {
+        name: '接单数',
+        type: 'bar',
+        data: values,
+        itemStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: '#13c2c2' },
+              { offset: 1, color: '#667eea' },
+            ],
+          },
+          borderRadius: [4, 4, 0, 0],
+        },
+        barWidth: 28,
+      },
+    ],
+  };
+  return <ReactECharts option={option} style={{ height: 300 }} />;
+}

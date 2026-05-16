@@ -9,6 +9,7 @@ import DetailModal from '../../components/orderer/modals/DetailModal';
 import ChatModal from '../../components/orderer/modals/ChatModal';
 import EvaluationModal from '../../components/orderer/modals/EvaluationModal';
 import AcceptanceModal from '../../components/orderer/modals/AcceptanceModal';
+import CutInLineRequestModal from '../../components/orderer/modals/CutInLineRequestModal';
 import OrderFilterModal from '../../components/orderer/modals/OrderFilterModal';
 import { MOCK_ORDERS } from '../../mock/orders';
 
@@ -50,7 +51,9 @@ function OrderManage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [evalOpen, setEvalOpen] = useState(false);
   const [acceptanceOpen, setAcceptanceOpen] = useState(false);
+  const [cutInLineRequestOpen, setCutInLineRequestOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
+  const [cutInLineRequest, setCutInLineRequest] = useState(null);
 
   // 搜索与筛选状态
   const [searchText, setSearchText] = useState('');
@@ -105,7 +108,6 @@ function OrderManage() {
     if (f.order_type !== undefined && f.order_type !== null)
       list = list.filter((o) => o.order_type === f.order_type);
     if (f.task_type_id?.length) list = list.filter((o) => inArr(o.task_type_id, f.task_type_id));
-    if (f.priority?.length) list = list.filter((o) => inArr(o.priority, f.priority));
     if (f.status?.length) list = list.filter((o) => inArr(o.status, f.status));
     if (f.is_evaluated_by_creator !== undefined && f.is_evaluated_by_creator !== null)
       list = list.filter((o) => (o.is_evaluated_by_creator || 0) === f.is_evaluated_by_creator);
@@ -153,7 +155,7 @@ function OrderManage() {
   };
 
   const handleSubmit = () => {
-    // 简单校验：任务名、客户名、地区、任务类型、优先级、截止日期
+    // 简单校验：任务名、客户名、地区、任务类型、截止日期
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
       if (!t.task_name?.trim()) {
@@ -170,10 +172,6 @@ function OrderManage() {
       }
       if (!t.task_type_id) {
         message.error(`任务 ${i + 1}：请选择任务类型`);
-        return;
-      }
-      if (!t.priority) {
-        message.error(`任务 ${i + 1}：请选择优先级`);
         return;
       }
       if (!t.deadline) {
@@ -235,6 +233,42 @@ function OrderManage() {
   const handleAcceptance = (order) => {
     setActiveOrder(order);
     setAcceptanceOpen(true);
+  };
+
+  // 处理插队申请
+  const handleCutInLine = (order) => {
+    // 模拟：找到该接单人的第一位排队用户
+    const receiverOrders = orders.filter(o => o.receiver_id === order.receiver_id && o.status === 1);
+    if (receiverOrders.length > 0) {
+      const firstInQueue = receiverOrders[0];
+      // 这里应该发送通知给firstInQueue的下单人
+      message.info(`已向 ${firstInQueue.creator_name} 发送插队申请通知`);
+      
+      // 模拟显示插队申请通知（实际应该在第一位排队用户的界面显示）
+      setCutInLineRequest({
+        id: Date.now(),
+        requester_name: '当前用户',
+        requester_order_no: order.order_no,
+        requester_task_name: order.task_name,
+        current_position: 1,
+        created_at: new Date().toLocaleString(),
+      });
+      setCutInLineRequestOpen(true);
+    }
+  };
+
+  // 同意插队
+  const handleAgreeCutInLine = () => {
+    message.success('已同意插队，对方订单将优先制作');
+    setCutInLineRequestOpen(false);
+    setCutInLineRequest(null);
+  };
+
+  // 拒绝插队
+  const handleRejectCutInLine = () => {
+    message.info('已拒绝插队申请');
+    setCutInLineRequestOpen(false);
+    setCutInLineRequest(null);
   };
 
   // 驳回：订单状态回退为"进行中"，并把 pending 条目标记为 rejected 存入历史
@@ -359,6 +393,7 @@ function OrderManage() {
               onRemove={handleRemoveTask}
               showRemove={tasks.length > 1}
               firstInputRef={firstInputRef}
+              userRoles={currentUser.roles}
             />
           ))}
         </Card>
@@ -407,6 +442,7 @@ function OrderManage() {
         {filteredOrders.length > 0 ? (
           <OrderTable
             dataSource={filteredOrders}
+            allOrders={orders}
             onEdit={handleEdit}
             onRecall={handleRecall}
             onDetail={handleDetail}
@@ -414,6 +450,7 @@ function OrderManage() {
             onEvaluate={handleEvaluate}
             onChat={handleChat}
             onAcceptance={handleAcceptance}
+            onCutInLine={handleCutInLine}
           />
         ) : (
           <Empty description={searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'} />
@@ -457,6 +494,16 @@ function OrderManage() {
         onCancel={() => setFilterOpen(false)}
         onOk={handleFilterOk}
         onReset={handleFilterReset}
+      />
+      <CutInLineRequestModal
+        open={cutInLineRequestOpen}
+        requestInfo={cutInLineRequest}
+        onAgree={handleAgreeCutInLine}
+        onReject={handleRejectCutInLine}
+        onCancel={() => {
+          setCutInLineRequestOpen(false);
+          setCutInLineRequest(null);
+        }}
       />
     </div>
   );
