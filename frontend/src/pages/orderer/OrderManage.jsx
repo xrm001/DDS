@@ -1,16 +1,19 @@
 import { useState, useMemo, useRef } from 'react';
-import { Card, Button, Space, Modal, message, Divider, Empty, Input, Badge, Tooltip } from 'antd';
-import { PlusOutlined, ReloadOutlined, CheckCircleOutlined, FilterOutlined } from '@ant-design/icons';
+import { Card, Button, Space, Modal, message, Divider, Empty, Input, Badge, Tooltip, Tabs } from 'antd';
+import { PlusOutlined, ReloadOutlined, CheckCircleOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import TaskForm from '../../components/orderer/TaskForm';
 import OrderTable from '../../components/orderer/OrderTable';
+import DealBoard from '../../components/orderer/DealBoard';
 import EditOrderModal from '../../components/orderer/modals/EditOrderModal';
 import DetailModal from '../../components/orderer/modals/DetailModal';
 import ChatModal from '../../components/orderer/modals/ChatModal';
 import EvaluationModal from '../../components/orderer/modals/EvaluationModal';
 import AcceptanceModal from '../../components/orderer/modals/AcceptanceModal';
+import DealStatusModal from '../../components/orderer/modals/DealStatusModal';
 import CutInLineRequestModal from '../../components/orderer/modals/CutInLineRequestModal';
 import OrderFilterModal from '../../components/orderer/modals/OrderFilterModal';
+import NotificationCenter from '../../components/orderer/NotificationCenter';
 import { MOCK_ORDERS } from '../../mock/orders';
 
 // 创建空任务对象
@@ -36,6 +39,8 @@ function OrderManage() {
   const [tasks, setTasks] = useState([emptyTask()]);
   // 订单列表数据
   const [orders, setOrders] = useState(MOCK_ORDERS);
+  // 视图模式：'table' 表格视图，'board' 看板视图
+  const [viewMode, setViewMode] = useState('table');
   // 当前登录用户
   const currentUser = useMemo(() => {
     try {
@@ -51,6 +56,7 @@ function OrderManage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [evalOpen, setEvalOpen] = useState(false);
   const [acceptanceOpen, setAcceptanceOpen] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
   const [cutInLineRequestOpen, setCutInLineRequestOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
   const [cutInLineRequest, setCutInLineRequest] = useState(null);
@@ -235,6 +241,19 @@ function OrderManage() {
     setAcceptanceOpen(true);
   };
 
+  // 打开成交状态管理弹框
+  const handleDeal = (order) => {
+    setActiveOrder(order);
+    setDealOpen(true);
+  };
+
+  // 更新成交状态
+  const handleDealUpdate = (orderId, dealData) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, ...dealData } : o))
+    );
+  };
+
   // 处理插队申请
   const handleCutInLine = (order) => {
     // 模拟：找到该接单人的第一位排队用户
@@ -411,6 +430,23 @@ function OrderManage() {
         }
         extra={
           <Space>
+            {/* 视图切换 */}
+            <Button.Group>
+              <Button 
+                icon={<UnorderedListOutlined />} 
+                type={viewMode === 'table' ? 'primary' : 'default'}
+                onClick={() => setViewMode('table')}
+              >
+                表格视图
+              </Button>
+              <Button 
+                icon={<AppstoreOutlined />} 
+                type={viewMode === 'board' ? 'primary' : 'default'}
+                onClick={() => setViewMode('board')}
+              >
+                看板视图
+              </Button>
+            </Button.Group>
             <Input.Search
               allowClear
               placeholder="搜索：任务名称 / 接单人 / 客户 / 国籍"
@@ -439,21 +475,29 @@ function OrderManage() {
         }
         styles={{ body: { padding: 16 } }}
       >
-        {filteredOrders.length > 0 ? (
-          <OrderTable
-            dataSource={filteredOrders}
-            allOrders={orders}
-            onEdit={handleEdit}
-            onRecall={handleRecall}
-            onDetail={handleDetail}
-            onModify={handleModify}
-            onEvaluate={handleEvaluate}
-            onChat={handleChat}
-            onAcceptance={handleAcceptance}
-            onCutInLine={handleCutInLine}
-          />
+        {viewMode === 'table' ? (
+          filteredOrders.length > 0 ? (
+            <OrderTable
+              dataSource={filteredOrders}
+              allOrders={orders}
+              onEdit={handleEdit}
+              onRecall={handleRecall}
+              onDetail={handleDetail}
+              onModify={handleModify}
+              onEvaluate={handleEvaluate}
+              onChat={handleChat}
+              onAcceptance={handleAcceptance}
+              onCutInLine={handleCutInLine}
+              onDeal={handleDeal}
+            />
+          ) : (
+            <Empty description={searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'} />
+          )
         ) : (
-          <Empty description={searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'} />
+          <DealBoard 
+            orders={filteredOrders} 
+            onDealClick={handleDeal}
+          />
         )}
       </Card>
 
@@ -504,6 +548,13 @@ function OrderManage() {
           setCutInLineRequestOpen(false);
           setCutInLineRequest(null);
         }}
+      />
+      <DealStatusModal
+        open={dealOpen}
+        order={activeOrder}
+        currentUser={currentUser}
+        onCancel={() => setDealOpen(false)}
+        onUpdate={handleDealUpdate}
       />
     </div>
   );

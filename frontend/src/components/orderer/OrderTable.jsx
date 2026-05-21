@@ -1,6 +1,6 @@
 import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from 'antd';
-import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES } from '../../constants/enums';
+import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons';
+import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS } from '../../constants/enums';
 import { useState } from 'react';
 import ReceiverQueueModal from './modals/ReceiverQueueModal';
 import CutInLineModal from './modals/CutInLineModal';
@@ -12,7 +12,7 @@ const getPriority = (v) => PRIORITIES.find((p) => p.value === v);
 // 订单列表表格
 // props:
 //   dataSource: 订单数组
-//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance, onCutInLine
+//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance, onCutInLine, onDeal
 //   allOrders: 所有订单数据（用于计算排队情况）
 function OrderTable({ 
   dataSource, 
@@ -24,6 +24,7 @@ function OrderTable({
   onChat, 
   onAcceptance,
   onCutInLine,
+  onDeal,
   allOrders = [] 
 }) {
   const [queueModalOpen, setQueueModalOpen] = useState(false);
@@ -142,6 +143,59 @@ function OrderTable({
         }
 
         return statusTag;
+      },
+    },
+    // 成交状态列（仅已完成订单显示）
+    {
+      title: '成交状态',
+      key: 'deal_status',
+      width: 120,
+      render: (_, record) => {
+        // 只有已完成或已拒绝的订单才显示成交状态
+        if (record.status !== 4 && record.status !== 5) {
+          return <span style={{ color: '#bfbfbf' }}>—</span>;
+        }
+        
+        const dealStatus = record.deal_status || 7; // 默认待确认
+        const dealConfig = DEAL_STATUS[dealStatus];
+        
+        return (
+          <Tooltip title="点击管理成交状态">
+            <Tag 
+              color={dealConfig.color}
+              style={{ cursor: 'pointer' }}
+              onClick={() => onDeal && onDeal(record)}
+            >
+              {dealConfig.label}
+            </Tag>
+          </Tooltip>
+        );
+      },
+    },
+    // 成交金额列
+    {
+      title: '成交金额',
+      key: 'deal_amount',
+      width: 120,
+      render: (_, record) => {
+        // 只有已完成或已拒绝的订单才显示成交金额
+        if (record.status !== 4 && record.status !== 5) {
+          return <span style={{ color: '#bfbfbf' }}>—</span>;
+        }
+        
+        if (!record.deal_amount) {
+          return <span style={{ color: '#bfbfbf' }}>未填写</span>;
+        }
+        
+        const currency = record.currency === 'USD' ? '$' : '¥';
+        return (
+          <Space size={4}>
+            <DollarOutlined style={{ color: '#52c41a' }} />
+            <span style={{ fontWeight: 600, color: '#52c41a' }}>
+              {currency}{record.deal_amount.toFixed(2)}
+            </span>
+          </Space>
+        );
       },
     },
     {

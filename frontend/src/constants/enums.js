@@ -41,6 +41,19 @@ export const ORDER_STATUS = {
   4: { label: '已完成', color: 'success' },
   5: { label: '已拒绝', color: 'error' },
   6: { label: '已取消', color: 'default' },
+  // 成交状态（订单完成后3天内需更新）
+  7: { label: '待确认', color: 'default' },  // 默认状态
+  8: { label: '谈单中', color: 'processing' },
+  9: { label: '已成交', color: 'success' },
+  10: { label: '未成交', color: 'error' },
+};
+
+// 成交状态
+export const DEAL_STATUS = {
+  7: { label: '待确认', color: 'default' },
+  8: { label: '谈单中', color: 'processing' },
+  9: { label: '已成交', color: 'success' },
+  10: { label: '未成交', color: 'error' },
 };
 
 // 评价维度（下单人视角）

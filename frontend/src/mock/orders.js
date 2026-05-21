@@ -29,6 +29,11 @@ export const MOCK_ORDERS = [
     unread_messages: 0,
     is_evaluated_by_creator: 1,
     evaluation: { score_completion: 5, score_communication: 5, score_understanding: 4, score_technical: 5, score_design: 5, overall_score: 4.8, comment: '设计效果非常出色，沟通顺畅，建议继续保持' },
+    // 成交状态字段
+    deal_status: 9, // 已成交
+    deal_amount: 5800.00,
+    currency: 'CNY',
+    deal_updated_at: '2025-05-18 16:20:00',
     acceptance_history: [
       { id: 1, submitted_at: '2025-05-15 15:00:00', submitter: '王设计', description: '已完成新品宣传海报初稿，请审阅。', files: buildFiles('DDS20250509001', 'v1'), review_result: 'rejected', review_remark: '主视觉元素与品牌调性不符，请调整色调并更换主图。', reviewed_at: '2025-05-15 17:20:00' },
       { id: 2, submitted_at: '2025-05-18 14:00:00', submitter: '王设计', description: '按反馈修改后重新提交，色调调整为冷色系，主视觉已替换。', files: buildFiles('DDS20250509001', 'v2'), review_result: 'approved', review_remark: '修改到位，整体效果符合预期，通过验收。', reviewed_at: '2025-05-18 16:20:00' },
