@@ -20,7 +20,7 @@ function Sidebar() {
   else if (path.endsWith('/orders')) selectedKey = 'orders';
 
   const items = [
-    { key: 'dashboard', icon: <DashboardOutlined />, label: '工作看板' },
+    { key: 'dashboard', icon: <DashboardOutlined />, label: '数据看板' },
     { key: 'orderer', icon: <FileTextOutlined />, label: '下单管理' },
     { key: 'receiver', icon: <InboxOutlined />, label: '接单管理' },
     { key: 'orders', icon: <UnorderedListOutlined />, label: '订单列表' },

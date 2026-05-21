@@ -16,7 +16,7 @@ import {
 } from '../../components/orderer/charts';
 import { DASHBOARD_DATA } from '../../mock/dashboard';
 
-// 工作看板（当前 / 月度 / 历史）
+// 数据看板（当前 / 月度 / 历史）
 function Dashboard() {
   const { current, monthly, historical } = DASHBOARD_DATA;
 
@@ -130,7 +130,6 @@ function Dashboard() {
 
   return (
     <Card
-      title={<span style={{ fontSize: 16, fontWeight: 600 }}>工作看板</span>}
       styles={{ body: { padding: 16 } }}
     >
       <Tabs defaultActiveKey="current" items={items} size="large" />

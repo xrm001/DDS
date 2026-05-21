@@ -12,7 +12,7 @@ function Sidebar() {
 
   const items = [
     { key: 'orders', icon: <InboxOutlined />, label: '接单管理' },
-    { key: 'dashboard', icon: <DashboardOutlined />, label: '工作看板' },
+    { key: 'dashboard', icon: <DashboardOutlined />, label: '数据看板' },
   ];
 
   const handleClick = ({ key }) => {

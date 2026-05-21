@@ -69,7 +69,7 @@ function RankBar({ data, color = '#667eea', title }) {
   return <ReactECharts option={option} style={{ height: 260 }} />;
 }
 
-// 负责人工作看板：全公司所有下单人/接单人订单统计（当前/月度/历史）
+// 负责人数据看板：全公司所有下单人/接单人订单统计（当前/月度/历史）
 function ManagerDashboard() {
   const { current, monthly, historical } = MANAGER_DASHBOARD_DATA;
 
@@ -203,7 +203,6 @@ function ManagerDashboard() {
 
   return (
     <Card
-      title={<span style={{ fontSize: 16, fontWeight: 600 }}>工作看板（全公司）</span>}
       styles={{ body: { padding: 16 } }}
     >
       <Tabs defaultActiveKey="current" items={items} size="large" />

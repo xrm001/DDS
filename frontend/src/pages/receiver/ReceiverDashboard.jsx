@@ -14,7 +14,7 @@ import {
 } from '../../components/orderer/charts';
 import { RECEIVER_DASHBOARD_DATA } from '../../mock/receiverDashboard';
 
-// 接单人工作看板（当前 / 月度 / 历史）
+// 接单人数据看板（当前 / 月度 / 历史）
 function ReceiverDashboard() {
   const { current, monthly, historical } = RECEIVER_DASHBOARD_DATA;
 
@@ -118,7 +118,6 @@ function ReceiverDashboard() {
 
   return (
     <Card
-      title={<span style={{ fontSize: 16, fontWeight: 600 }}>工作看板</span>}
       styles={{ body: { padding: 16 } }}
     >
       <Tabs defaultActiveKey="current" items={items} size="large" />
