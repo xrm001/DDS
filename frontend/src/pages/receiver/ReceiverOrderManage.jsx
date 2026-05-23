@@ -168,7 +168,7 @@ function ReceiverOrderManage() {
     message.success(`订单 ${order.order_no} 已接单，进入进行中`);
   };
 
-  // 弹框内点击"确认拒绝"（带理由）：status 1 -> 5
+  // 弹框内点击“确认拒绝”（带理由）：status 1 -> 5
   const handleRejectConfirm = (order, reason) => {
     const rejectedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
     setOrders((prev) =>
@@ -180,6 +180,57 @@ function ReceiverOrderManage() {
     );
     setAcceptOpen(false);
     message.warning(`订单 ${order.order_no} 已拒绝`);
+  };
+  
+  // 提交验收：打开 SubmitAcceptanceModal
+  const handleSubmitAcceptance = (order) => {
+    setActiveOrder(order);
+    setSubmitAcceptanceOpen(true);
+  };
+  
+  // 提交验收确认：status 2 -> 3
+  const handleSubmitAcceptanceOk = (order, payload) => {
+    const submittedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    const newHistory = {
+      id: (order.acceptance_history?.length || 0) + 1,
+      submit_time: submittedAt,
+      description: payload.description,
+      files: payload.files,
+      review_result: 'pending',
+      review_comment: '',
+      reviewed_at: '',
+    };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === order.id
+          ? {
+              ...o,
+              status: 3,
+              acceptance_history: [...(o.acceptance_history || []), newHistory],
+            }
+          : o
+      )
+    );
+    setSubmitAcceptanceOpen(false);
+    message.success(`订单 ${order.order_no} 已提交验收，等待审核`);
+  };
+  
+  // 退单处理：status 2 -> 1（返回待接单）
+  const handleReturnOrder = (order, reason) => {
+    const returnedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === order.id
+          ? {
+              ...o,
+              status: 1,
+              return_reason: reason,
+              returned_at: returnedAt,
+            }
+          : o
+      )
+    );
+    message.warning(`订单 ${order.order_no} 已退单，返回待接单池`);
   };
 
   // 提交验收：弹出 SubmitAcceptanceModal
@@ -287,6 +338,7 @@ function ReceiverOrderManage() {
         order={activeOrder}
         onCancel={() => setSubmitOpen(false)}
         onOk={handleSubmitOk}
+        onReturn={handleReturnOrder}
       />
       <ReviewHistoryModal
         open={historyOpen}
