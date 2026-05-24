@@ -7,6 +7,7 @@ const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
+  charset: 'utf8mb4', // 解决中文字符编码问题
   ssl: process.env.DB_HOST.includes('aliyuncs.com') ? false : undefined, // 阿里云 RDS MySQL 禁用 SSL，本地 MySQL 使用默认设置
   waitForConnections: true,
   connectionLimit: 10, // 最大连接数

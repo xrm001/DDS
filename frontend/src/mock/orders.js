@@ -62,6 +62,24 @@ export const MOCK_ORDERS = [
     acceptance_history: [
       { id: 1, submitted_at: '2025-05-14 10:00:00', submitter: '李建模', description: '6角度渲染初版已完成，请审核。', files: buildFiles('DDS20250509002', 'v1'), review_result: 'rejected', review_remark: '侧面角度材质有瑕疵，请重新渲染并提高光线精度。', reviewed_at: '2025-05-14 16:00:00' },
     ],
+    // 插队申请示例
+    cut_in_line_request: {
+      id: 1001,
+      creator_id: 3,
+      creator_name: '张三',
+      order_id: 10,
+      order_no: 'DDS20250510010',
+      target_order_id: 2,
+      target_order_no: 'DDS20250509002',
+      receiver_id: 4,
+      receiver_name: '李建模',
+      status: 0, // 插队已申请
+      reason: '客户急需',
+      response_reason: '',
+      refuse_content: '',
+      created_at: '2025-05-20 10:00:00',
+      responded_at: null,
+    },
   },
   {
     id: 3,
@@ -83,6 +101,24 @@ export const MOCK_ORDERS = [
     completed_at: null,
     unread_messages: 1,
     is_evaluated_by_creator: 0,
+    // 插队申请示例 - 插队待处理
+    cut_in_line_request: {
+      id: 1002,
+      creator_id: 4,
+      creator_name: '李四',
+      order_id: 11,
+      order_no: 'DDS20250510011',
+      target_order_id: 3,
+      target_order_no: 'DDS20250509003',
+      receiver_id: 7,
+      receiver_name: '赵全案',
+      status: 3, // 插队待处理
+      reason: '项目紧急',
+      response_reason: '',
+      refuse_content: '',
+      created_at: '2025-05-21 09:00:00',
+      responded_at: null,
+    },
     acceptance_history: [
       { id: 1, submitted_at: '2025-05-13 18:00:00', submitter: '赵全案', description: 'VI 系统第一版提交，包含 Logo、主辅色、字体规范。', files: buildFiles('DDS20250509003', 'v1'), review_result: 'rejected', review_remark: 'Logo 辅助图形还需简化，字体层级需更清晰。', reviewed_at: '2025-05-14 10:00:00' },
       { id: 2, submitted_at: '2025-05-16 09:30:00', submitter: '赵全案', description: '根据意见调整完成，新增应用规范第一章，请审核。', files: buildFiles('DDS20250509003', 'v2'), review_result: 'pending', review_remark: null, reviewed_at: null },
@@ -108,6 +144,24 @@ export const MOCK_ORDERS = [
     completed_at: null,
     unread_messages: 0,
     is_evaluated_by_creator: 0,
+    // 插队申请示例 - 插队已拒绝
+    cut_in_line_request: {
+      id: 1004,
+      creator_id: 6,
+      creator_name: '赵六',
+      order_id: 13,
+      order_no: 'DDS20250510013',
+      target_order_id: 4,
+      target_order_no: 'DDS20250509004',
+      receiver_id: 8,
+      receiver_name: '孙摄影',
+      status: 2, // 插队已拒绝
+      reason: '客户需要',
+      response_reason: '拒绝',
+      refuse_content: '当前订单优先级较低，暂不接受插队',
+      created_at: '2025-05-19 10:00:00',
+      responded_at: '2025-05-19 16:00:00',
+    },
   },
   {
     id: 5,
@@ -195,6 +249,25 @@ export const MOCK_ORDERS = [
     completed_at: null,
     unread_messages: 5,
     is_evaluated_by_creator: 0,
+    // 插队申请示例 - 被插队已同意
+    cut_in_line_request: {
+      id: 1005,
+      creator_id: 7,
+      creator_name: '周七',
+      order_id: 14,
+      order_no: 'DDS20250510014',
+      target_order_id: 8,
+      target_order_no: 'DDS20250510003',
+      receiver_id: 7,
+      receiver_name: '赵全案',
+      status: 4, // 被插队已同意
+      reason: '紧急项目',
+      response_reason: '同意',
+      refuse_content: '',
+      created_at: '2025-05-22 10:00:00',
+      responded_at: '2025-05-22 14:00:00',
+    },
+    is_evaluated_by_creator: 0,
   },
   {
     id: 9,
@@ -221,6 +294,24 @@ export const MOCK_ORDERS = [
       { id: 1, submitted_at: '2025-05-08 18:00:00', submitter: '孙摄影', description: '共拍摄 30 张，已精修 20 张。', files: buildFiles('DDS20250511001', 'v1'), review_result: 'rejected', review_remark: '请补齐剩余 10 张精修。', reviewed_at: '2025-05-08 20:00:00' },
       { id: 2, submitted_at: '2025-05-09 08:30:00', submitter: '孙摄影', description: '剩余 10 张精修已补齐，请最终审核。', files: buildFiles('DDS20250511001', 'v2'), review_result: 'approved', review_remark: '全部达标，通过。', reviewed_at: '2025-05-09 10:00:00' },
     ],
+    // 插队申请示例 - 被插队已拒绝
+    cut_in_line_request: {
+      id: 1006,
+      creator_id: 8,
+      creator_name: '吴八',
+      order_id: 15,
+      order_no: 'DDS20250510015',
+      target_order_id: 9,
+      target_order_no: 'DDS20250511001',
+      receiver_id: 8,
+      receiver_name: '孙摄影',
+      status: 5, // 被插队已拒绝
+      reason: '需要快速上线',
+      response_reason: '拒绝',
+      refuse_content: '当前排期已满，无法接受插队',
+      created_at: '2025-05-20 10:00:00',
+      responded_at: '2025-05-20 17:00:00',
+    },
   },
   {
     id: 10,

@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Badge, Tag, Button, Space, Modal, Popover, List, Avatar } from 'antd';
-import { BellOutlined, LogoutOutlined, UserOutlined, CheckCircleOutlined, ClockCircleOutlined, SyncOutlined } from '@ant-design/icons';
+import { Badge, Tag, Button, Space, Modal, Popover, List, Avatar, Empty } from 'antd';
+import { BellOutlined, LogoutOutlined, UserOutlined, CheckCircleOutlined, ClockCircleOutlined, SyncOutlined, MessageOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { SYSTEM_NOTIFICATIONS } from '../../mock/messages';
 
 // 顶部标题栏组件
-function TopBar({ user, unreadCount = 0 }) {
+// props:
+//   user: 当前用户信息
+//   notifications: 通知列表 [{ id, user_id, notify, is_read, type, related_order_id, related_user_id, created_at }]
+//   onNotificationClick: 点击通知回调 (notification) -> void
+//   onMarkAsRead: 标记已读回调 (notificationId) -> void
+//   onMarkAllAsRead: 标记全部已读回调 () -> void
+function TopBar({ user, notifications = [], onNotificationClick, onMarkAsRead, onMarkAllAsRead }) {
   const navigate = useNavigate();
   const [now, setNow] = useState(dayjs());
-  const [notifications, setNotifications] = useState(SYSTEM_NOTIFICATIONS);
   const [open, setOpen] = useState(false);
 
   // 每秒刷新当前时间
@@ -32,33 +36,58 @@ function TopBar({ user, unreadCount = 0 }) {
     });
   };
 
-  // 处理消息弹框显示
+  // 处理弹框显示
   const handleVisibleChange = (visible) => {
     setOpen(visible);
   };
 
-  // 标记所有消息为已读
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+  // 点击通知
+  const handleNotificationClick = (notification) => {
+    // 标记为已读
+    onMarkAsRead?.(notification.id);
+    // 关闭弹框
+    setOpen(false);
+    // 调用父组件处理
+    onNotificationClick?.(notification);
+  };
+
+  // 标记所有已读
+  const handleMarkAllAsRead = () => {
+    onMarkAllAsRead?.();
   };
 
   // 获取通知类型图标
   const getNotificationIcon = (type) => {
     switch(type) {
-      case 'completed':
+      case 1:
         return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      case 'pending':
+      case 2:
         return <ClockCircleOutlined style={{ color: '#faad14' }} />;
-      case 'progress':
+      case 3:
         return <SyncOutlined spin style={{ color: '#1677ff' }} />;
       default:
         return <BellOutlined style={{ color: '#667eea' }} />;
     }
   };
 
-  // 消息弹框内容
+  // 获取通知类型名称
+  const getNotificationTypeName = (type) => {
+    switch(type) {
+      case 1: return '插队申请';
+      case 2: return '插队响应';
+      case 3: return '订单状态变更';
+      case 4: return '验收通知';
+      default: return '系统通知';
+    }
+  };
+
+  // 未读通知列表（is_read = 0）
+  const unreadNotifications = notifications.filter(n => !n.is_read);
+  const unreadCountDisplay = unreadNotifications.length;
+
+  // 通知列表内容
   const notificationContent = (
-    <div style={{ width: 400 }}>
+    <div style={{ width: 420, maxHeight: 400, overflowY: 'auto' }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -67,48 +96,72 @@ function TopBar({ user, unreadCount = 0 }) {
         paddingBottom: 8,
         borderBottom: '1px solid #f0f0f0'
       }}>
-        <span style={{ fontWeight: 600, fontSize: 15 }}>通知中心</span>
-        <Button type="link" size="small" onClick={() => setOpen(false)}>
-          关闭
-        </Button>
-      </div>
-      <List
-        dataSource={notifications}
-        locale={{ emptyText: '暂无通知' }}
-        renderItem={(item) => (
-          <List.Item
-            style={{
-              padding: '12px 8px',
-              background: item.is_read ? '#fff' : '#f6f8ff',
-              borderRadius: 4,
-              marginBottom: 8,
-            }}
-          >
-            <List.Item.Meta
-              avatar={
-                <Avatar style={{ backgroundColor: '#f0f2f5' }}>
-                  {getNotificationIcon(item.type)}
-                </Avatar>
-              }
-              title={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: item.is_read ? 400 : 600, fontSize: 13 }}>
-                    {item.title}
-                  </span>
-                  <span style={{ fontSize: 11, color: '#8c8c8c' }}>
-                    {dayjs(item.created_at).format('HH:mm:ss')}
-                  </span>
-                </div>
-              }
-              description={
-                <div style={{ fontSize: 12, color: '#595959', marginTop: 4 }}>
-                  {item.content}
-                </div>
-              }
-            />
-          </List.Item>
+        <span style={{ fontWeight: 600, fontSize: 15 }}>
+          通知中心 {unreadCountDisplay > 0 && `(${unreadCountDisplay}条未读)`}
+        </span>
+        {unreadCountDisplay > 0 && (
+          <Button type="link" size="small" onClick={handleMarkAllAsRead}>
+            全部已读
+          </Button>
         )}
-      />
+      </div>
+      {unreadNotifications.length > 0 ? (
+        <List
+          dataSource={unreadNotifications}
+          locale={{ emptyText: '暂无未读通知' }}
+          renderItem={(item) => (
+            <List.Item
+              key={item.id}
+              style={{
+                padding: '12px 8px',
+                background: '#f6f8ff',
+                borderRadius: 4,
+                marginBottom: 8,
+                cursor: 'pointer',
+                border: '1px solid #e8edff',
+              }}
+              onClick={() => handleNotificationClick(item)}
+            >
+              <List.Item.Meta
+                avatar={
+                  <Avatar style={{ backgroundColor: '#f0f2f5' }}>
+                    {getNotificationIcon(item.type)}
+                  </Avatar>
+                }
+                title={
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>
+                      {item.notify}
+                    </span>
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      icon={<MessageOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNotificationClick(item);
+                      }}
+                    >
+                      查看
+                    </Button>
+                  </div>
+                }
+                description={
+                  <div style={{ fontSize: 12, color: '#595959', marginTop: 4 }}>
+                    {getNotificationTypeName(item.type)}
+                    {item.related_order_id && ` | 订单: ${item.related_order_id}`}
+                    <span style={{ marginLeft: 8, color: '#8c8c8c' }}>
+                      {dayjs(item.created_at).format('YYYY-MM-DD HH:mm')}
+                    </span>
+                  </div>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      ) : (
+        <Empty description="暂无未读通知" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      )}
     </div>
   );
 
@@ -173,13 +226,13 @@ function TopBar({ user, unreadCount = 0 }) {
           open={open}
           onOpenChange={handleVisibleChange}
           placement="bottomRight"
-          overlayStyle={{ width: 420 }}
+          overlayStyle={{ width: 440 }}
         >
-          <Badge count={notifications.filter(n => !n.is_read).length} size="small" offset={[-2, 2]}>
+          <Badge count={unreadCountDisplay} size="small" offset={[-2, 2]} showZero>
             <BellOutlined 
               style={{ 
                 fontSize: 18, 
-                color: notifications.some(n => !n.is_read) ? '#1677ff' : '#595959',
+                color: unreadCountDisplay > 0 ? '#1677ff' : '#595959',
                 cursor: 'pointer' 
               }} 
             />

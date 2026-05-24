@@ -72,3 +72,13 @@ export const RECEIVER_EVAL_DIMENSIONS = [
   { key: 'score_communication', label: '沟通' },
   { key: 'score_confirmation_timeliness', label: '确认及时性' },
 ];
+
+// 插队申请状态
+export const CUT_IN_LINE_STATUS = {
+  0: { label: '插队已申请', color: 'default' },
+  1: { label: '插队已同意', color: 'success' },
+  2: { label: '插队已拒绝', color: 'error' },
+  3: { label: '插队待处理', color: 'processing' },
+  4: { label: '被插队已同意', color: 'success' },
+  5: { label: '被插队已拒绝', color: 'error' },
+};

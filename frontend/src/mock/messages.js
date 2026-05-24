@@ -67,3 +67,47 @@ export const SYSTEM_NOTIFICATIONS = [
   },
 ];
 
+// 通知中心数据（与 notifications 表结构对齐）
+export const MOCK_NOTIFICATIONS = [
+  {
+    id: 1,
+    user_id: 2,
+    notify: '您有一笔插队申请待处理：订单 DDS20250510010 申请插队到 DDS20250509002',
+    is_read: 0,
+    type: 1,
+    related_order_id: 2,
+    related_user_id: 3,
+    created_at: '2025-05-23 10:00:00',
+  },
+  {
+    id: 2,
+    user_id: 2,
+    notify: '李建模已响应您的插队申请：同意插队到订单 DDS20250509003',
+    is_read: 0,
+    type: 2,
+    related_order_id: 3,
+    related_user_id: 4,
+    created_at: '2025-05-23 09:30:00',
+  },
+  {
+    id: 3,
+    user_id: 2,
+    notify: '订单 DDS20250509003（品牌全案设计）已提交验收，请及时审核',
+    is_read: 0,
+    type: 4,
+    related_order_id: 3,
+    related_user_id: 7,
+    created_at: '2025-05-23 08:00:00',
+  },
+  {
+    id: 4,
+    user_id: 2,
+    notify: '接单人王设计已拒绝您的订单 DDS20250511002',
+    is_read: 1,
+    type: 3,
+    related_order_id: 10,
+    related_user_id: 6,
+    created_at: '2025-05-22 17:00:00',
+  },
+];
+

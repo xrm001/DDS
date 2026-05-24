@@ -1,9 +1,10 @@
 import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from 'antd';
 import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons';
-import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS } from '../../constants/enums';
+import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS, CUT_IN_LINE_STATUS } from '../../constants/enums';
 import { useState } from 'react';
 import ReceiverQueueModal from './modals/ReceiverQueueModal';
 import CutInLineModal from './modals/CutInLineModal';
+import CutInLineProcessModal from './modals/CutInLineProcessModal';
 
 // 查找任务类型标签
 const getTaskTypeLabel = (id) => TASK_TYPES.find((t) => t.value === id)?.label || '-';
@@ -12,8 +13,9 @@ const getPriority = (v) => PRIORITIES.find((p) => p.value === v);
 // 订单列表表格
 // props:
 //   dataSource: 订单数组
-//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance, onCutInLine, onDeal
+//   onEdit, onRecall, onDetail, onModify, onEvaluate, onChat, onAcceptance, onCutInLine, onDeal, onCutInLineProcess
 //   allOrders: 所有订单数据（用于计算排队情况）
+//   currentUserId: 当前用户ID
 function OrderTable({ 
   dataSource, 
   onEdit, 
@@ -25,12 +27,17 @@ function OrderTable({
   onAcceptance,
   onCutInLine,
   onDeal,
+  onCutInLineProcess,
+  onCutInLineRequest,
+  currentUserId,
   allOrders = [] 
 }) {
   const [queueModalOpen, setQueueModalOpen] = useState(false);
   const [cutInLineModalOpen, setCutInLineModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedReceiver, setSelectedReceiver] = useState(null);
+  const [cutInLineProcessOpen, setCutInLineProcessOpen] = useState(false);
+  const [cutInLineProcessData, setCutInLineProcessData] = useState(null);
 
   // 获取接单人的所有订单
   const getReceiverOrders = (receiverId) => {
@@ -207,6 +214,8 @@ function OrderTable({
         if (!v) return <span style={{ color: '#bfbfbf' }}>待派单</span>;
         
         const receiverOrders = getReceiverOrders(record.receiver_id);
+        const inProgressCount = receiverOrders.filter(o => o.status === 2).length;
+        const pendingCount = receiverOrders.filter(o => o.status === 1).length;
         
         return (
           <Popover
@@ -214,8 +223,8 @@ function OrderTable({
               <div style={{ width: 200 }}>
                 <div style={{ fontWeight: 600, marginBottom: 8 }}>{v} 的订单</div>
                 <div style={{ fontSize: 12, color: '#595959' }}>
-                  <div>进行中：{receiverOrders.filter(o => o.status === 2).length} 单</div>
-                  <div style={{ marginTop: 4 }}>排队中：{receiverOrders.filter(o => o.status === 1).length} 单</div>
+                  <div>进行中：{inProgressCount} 单</div>
+                  <div style={{ marginTop: 4 }}>排队中：{pendingCount} 单</div>
                 </div>
                 <Button
                   type="link"
@@ -240,6 +249,52 @@ function OrderTable({
             <span style={{ cursor: 'pointer', color: '#1677ff' }}>{v}</span>
           </Popover>
         );
+      },
+    },
+    {
+      title: '插队单',
+      key: 'cut_in_line',
+      width: 130,
+      render: (_, record) => {
+        // 检查该订单是否有插队申请
+        const cutInLineReq = record.cut_in_line_request;
+        
+        if (!cutInLineReq) {
+          return <span style={{ color: '#bfbfbf' }}>—</span>;
+        }
+        
+        const status = cutInLineReq.status;
+        const config = CUT_IN_LINE_STATUS[status];
+        
+        // status=2 显示拒绝原因
+        if (status === 2) {
+          return (
+            <Tooltip title={cutInLineReq.refuse_content || '暂无说明'}>
+              <Tag color={config.color} style={{ cursor: 'pointer' }}>
+                {config.label}
+              </Tag>
+            </Tooltip>
+          );
+        }
+        
+        // status=3 可点击处理
+        if (status === 3) {
+          return (
+            <Tag
+              color={config.color}
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                setCutInLineProcessData(cutInLineReq);
+                setCutInLineProcessOpen(true);
+              }}
+            >
+              {config.label}
+            </Tag>
+          );
+        }
+        
+        // 其他状态
+        return <Tag color={config.color}>{config.label}</Tag>;
       },
     },
     {
@@ -371,9 +426,15 @@ function OrderTable({
       {selectedReceiver && (
         <ReceiverQueueModal
           open={queueModalOpen}
+          receiverId={selectedReceiver.id}
           receiverName={selectedReceiver.name}
           queueOrders={selectedReceiver.orders}
           onCancel={() => setQueueModalOpen(false)}
+          onCutInLine={(targetOrderId) => {
+            // 调用父组件的插队申请处理函数
+            onCutInLineRequest?.(targetOrderId);
+          }}
+          currentUserId={currentUserId}
         />
       )}
       
@@ -392,6 +453,21 @@ function OrderTable({
           }}
         />
       )}
+
+      {/* 插队处理弹窗 */}
+      <CutInLineProcessModal
+        open={cutInLineProcessOpen}
+        cutInLineData={cutInLineProcessData}
+        onCancel={() => setCutInLineProcessOpen(false)}
+        onAgree={(cutInLineId) => {
+          onCutInLineProcess?.(cutInLineId, 'agree');
+          setCutInLineProcessOpen(false);
+        }}
+        onReject={(cutInLineId, reason) => {
+          onCutInLineProcess?.(cutInLineId, 'reject', reason);
+          setCutInLineProcessOpen(false);
+        }}
+      />
     </>
   );
 }

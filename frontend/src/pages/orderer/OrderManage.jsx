@@ -15,6 +15,7 @@ import CutInLineRequestModal from '../../components/orderer/modals/CutInLineRequ
 import OrderFilterModal from '../../components/orderer/modals/OrderFilterModal';
 import NotificationCenter from '../../components/orderer/NotificationCenter';
 import { MOCK_ORDERS } from '../../mock/orders';
+import { submitOrder } from '../../api/orders';
 
 // 创建空任务对象
 const emptyTask = (overrides = {}) => ({
@@ -32,6 +33,16 @@ const emptyTask = (overrides = {}) => ({
   originalOrderNo: null,
   ...overrides,
 });
+
+// 读取文件为 Base64 字符串（用于传输）
+const readFileAsBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 // 下单管理页
 function OrderManage() {
@@ -160,7 +171,7 @@ function OrderManage() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 简单校验：任务名、客户名、地区、任务类型、截止日期
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
@@ -186,15 +197,90 @@ function OrderManage() {
       }
     }
 
-    // 屏幕中央显示"提交成功"
-    Modal.success({
-      title: '提交成功',
-      content: `已成功提交 ${tasks.length} 个任务订单`,
-      centered: true,
-      icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-      okText: '确定',
-      onOk: () => setTasks([emptyTask()]),
-    });
+    try {
+      // 提交所有任务
+      const submitPromises = tasks.map(async (task) => {
+        // 准备附件数据 - 需要读取文件内容
+        const attachments = [];
+        
+        if (task.fileList && task.fileList.length > 0) {
+          for (const file of task.fileList) {
+            // 如果有原始文件对象，读取文件内容
+            if (file.originFileObj) {
+              try {
+                const fileBase64 = await readFileAsBase64(file.originFileObj);
+                attachments.push({
+                  file_name: file.name,
+                  mime_type: file.type || 'application/octet-stream',
+                  file_type: 1, // 过程文件
+                  file_buffer: fileBase64 // Base64编码的文件内容
+                });
+              } catch (readError) {
+                console.error(`读取文件 ${file.name} 失败:`, readError);
+                // 即使读取失败，也记录附件信息（但不上传OSS）
+                attachments.push({
+                  file_name: file.name,
+                  mime_type: file.type || 'application/octet-stream',
+                  file_type: 1
+                });
+              }
+            } else {
+              // 没有原始文件对象，只记录信息
+              attachments.push({
+                file_name: file.name,
+                mime_type: file.type || 'application/octet-stream',
+                file_type: 1
+              });
+            }
+          }
+        }
+
+        // 确保deadline是dayjs对象
+        const deadlineDate = task.deadline ? 
+          (typeof task.deadline.format === 'function' ? task.deadline : dayjs(task.deadline)) : 
+          null;
+
+        if (!deadlineDate) {
+          throw new Error('截止日期无效');
+        }
+
+        // 调用后端API
+        const result = await submitOrder({
+          task_name: task.task_name,
+          customer_name: task.customer_name,
+          customer_region: task.customer_region,
+          task_type_id: task.task_type_id,
+          deadline: deadlineDate.format('YYYY-MM-DD HH:mm:ss'),
+          requirement_desc: task.requirement_desc,
+          creator_id: currentUser.id || 2, // TODO: 从全局状态获取
+          receiver_id: task.receiver_id || null,
+          attachments
+        });
+
+        return result;
+      });
+
+      const results = await Promise.all(submitPromises);
+      const successCount = results.filter(r => r.success).length;
+
+      // 屏幕中央显示"提交成功"
+      Modal.success({
+        title: '提交成功',
+        content: `已成功提交 ${successCount}/${tasks.length} 个任务订单`,
+        centered: true,
+        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+        okText: '确定',
+        onOk: () => setTasks([emptyTask()]),
+      });
+
+      // TODO: 刷新订单列表
+      // setOrders([...orders, ...newOrders]);
+
+    } catch (error) {
+      console.error('提交订单错误:', error);
+      const errorMsg = error.response?.data?.message || error.message || '未知错误';
+      message.error('提交失败：' + errorMsg);
+    }
   };
 
   // === 订单列表操作 ===
@@ -252,6 +338,110 @@ function OrderManage() {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, ...dealData } : o))
     );
+  };
+
+  // 处理插队申请（status=3）
+  const handleCutInLineProcess = (cutInLineId, action, reason) => {
+    const updatedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (!order.cut_in_line_request || order.cut_in_line_request.id !== cutInLineId) {
+          return order;
+        }
+        
+        const updatedRequest = {
+          ...order.cut_in_line_request,
+          status: action === 'agree' ? 4 : 5,
+          refuse_content: reason || '',
+          updated_at: updatedAt,
+        };
+        
+        return {
+          ...order,
+          cut_in_line_request: updatedRequest,
+        };
+      })
+    );
+  };
+
+  // 处理插队申请（从排队列表发起）
+  const handleCutInLineRequest = (targetOrderId) => {
+    // 找到目标订单
+    const targetOrder = orders.find(o => o.id === targetOrderId);
+    if (!targetOrder) {
+      message.error('订单不存在');
+      return;
+    }
+
+    // TODO: 这里应该调用后端API创建插队申请
+    // 暂时模拟：找到当前用户的订单，并创建插队申请记录
+    const currentOrderId = 10; // TODO: 从上下文获取当前操作订单ID
+    const currentOrder = orders.find(o => o.id === currentOrderId);
+    
+    if (!currentOrder) {
+      message.error('当前订单不存在');
+      return;
+    }
+
+    const cutInLineRequestId = Date.now();
+    const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+
+    // 更新目标订单的插队申请状态为 3 (待处理)
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order.id === targetOrderId) {
+          return {
+            ...order,
+            cut_in_line_request: {
+              id: cutInLineRequestId,
+              creator_id: currentOrder.creator_id,
+              creator_name: currentOrder.creator_name,
+              order_id: currentOrder.id,
+              order_no: currentOrder.order_no,
+              target_order_id: targetOrder.id,
+              target_order_no: targetOrder.order_no,
+              receiver_id: targetOrder.receiver_id,
+              receiver_name: targetOrder.receiver_name,
+              status: 3, // 插队待处理
+              reason: '',
+              response_reason: '',
+              refuse_content: '',
+              created_at: now,
+              responded_at: null,
+            },
+          };
+        }
+        
+        // 更新当前订单的插队申请状态为 0 (已申请)
+        if (order.id === currentOrderId) {
+          return {
+            ...order,
+            cut_in_line_request: {
+              id: cutInLineRequestId,
+              creator_id: currentOrder.creator_id,
+              creator_name: currentOrder.creator_name,
+              order_id: currentOrder.id,
+              order_no: currentOrder.order_no,
+              target_order_id: targetOrder.id,
+              target_order_no: targetOrder.order_no,
+              receiver_id: targetOrder.receiver_id,
+              receiver_name: targetOrder.receiver_name,
+              status: 0, // 插队已申请
+              reason: '',
+              response_reason: '',
+              refuse_content: '',
+              created_at: now,
+              responded_at: null,
+            },
+          };
+        }
+        
+        return order;
+      })
+    );
+
+    message.success('插队申请已发送，等待接单人处理');
   };
 
   // 处理插队申请
@@ -489,6 +679,9 @@ function OrderManage() {
               onAcceptance={handleAcceptance}
               onCutInLine={handleCutInLine}
               onDeal={handleDeal}
+              onCutInLineProcess={handleCutInLineProcess}
+              onCutInLineRequest={handleCutInLineRequest}
+              currentUserId={currentUser.id}
             />
           ) : (
             <Empty description={searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'} />
