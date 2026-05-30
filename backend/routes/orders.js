@@ -23,13 +23,14 @@ router.post('/submit', async (req, res) => {
   } = req.body;
 
   // 参数校验
-  if (!task_name || !customer_name || !customer_region || !task_type_id || !deadline) {
+  // 运营下单人时 customer_name 和 customer_region 可以为 null
+  if (!task_name || !task_type_id || !deadline) {
     console.error('[订单提交] 缺少必要参数:', {
       task_name, customer_name, customer_region, task_type_id, deadline
     });
     return res.status(400).json({
       success: false,
-      message: '缺少必要参数'
+      message: '缺少必要参数（task_name/task_type_id/deadline）'
     });
   }
 
@@ -174,12 +175,13 @@ router.post('/submit', async (req, res) => {
 
         await connection.execute(
           `INSERT INTO attachments (
-            order_id, uploader_id, file_name, oss_key, file_type, mime_type, is_deleted
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            order_id, uploader_id, file_name, file_url, oss_key, file_type, mime_type, is_deleted
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderId, // 关联订单ID
             creator_id,
             file_name,
+            ossUrl, // OSS返回的文件URL（上传失败时为null）
             ossKey,
             file_type,
             mime_type,

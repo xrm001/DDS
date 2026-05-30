@@ -171,21 +171,31 @@ function OrderManage() {
     });
   };
 
+  // 判断是否为运营下单人角色
+  const isOperationOrderer = useMemo(() => {
+    return currentUser.roles?.some(r => 
+      r.role_name === '运营下单人' || r.role_code === 'operation_orderer'
+    );
+  }, [currentUser.roles]);
+
   const handleSubmit = async () => {
-    // 简单校验：任务名、客户名、地区、任务类型、截止日期
+    // 简单校验：任务名、客户名/地区（业务下单人）、任务类型、截止日期
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
       if (!t.task_name?.trim()) {
         message.error(`任务 ${i + 1}：请填写任务名称`);
         return;
       }
-      if (!t.customer_name?.trim()) {
-        message.error(`任务 ${i + 1}：请填写客户名称`);
-        return;
-      }
-      if (!t.customer_region) {
-        message.error(`任务 ${i + 1}：请选择客户国籍/地区`);
-        return;
+      // 运营下单人不需要客户名称和客户地区
+      if (!isOperationOrderer) {
+        if (!t.customer_name?.trim()) {
+          message.error(`任务 ${i + 1}：请填写客户名称`);
+          return;
+        }
+        if (!t.customer_region) {
+          message.error(`任务 ${i + 1}：请选择客户国籍/地区`);
+          return;
+        }
       }
       if (!t.task_type_id) {
         message.error(`任务 ${i + 1}：请选择任务类型`);
@@ -247,8 +257,9 @@ function OrderManage() {
         // 调用后端API
         const result = await submitOrder({
           task_name: task.task_name,
-          customer_name: task.customer_name,
-          customer_region: task.customer_region,
+          // 运营下单人时 customer_name 和 customer_region 为 null
+          customer_name: isOperationOrderer ? null : (task.customer_name || null),
+          customer_region: isOperationOrderer ? null : (task.customer_region || null),
           task_type_id: task.task_type_id,
           deadline: deadlineDate.format('YYYY-MM-DD HH:mm:ss'),
           requirement_desc: task.requirement_desc,

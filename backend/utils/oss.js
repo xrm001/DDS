@@ -13,7 +13,8 @@ function createOSSClient(bucket) {
     accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET,
     bucket: bucket,
     endpoint: endpoint,
-    secure: true // 使用 HTTPS
+    secure: true, // 使用 HTTPS
+    timeout: 120000 // 120秒超时（大文件上传需要较长时间）
   });
 }
 
@@ -63,8 +64,28 @@ async function uploadFileToOSS(fileData, ossKey, fileType = 1) {
       console.log(`[OSS上传] Buffer数据, 大小: ${buffer.length} bytes`);
     }
 
-    // 上传文件
-    const result = await client.put(ossKey, buffer);
+    // 上传文件（带重试）
+    let result;
+    let lastError;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[OSS上传] 第 ${attempt}/${maxRetries} 次尝试上传...`);
+        result = await client.put(ossKey, buffer);
+        break; // 上传成功，跳出重试循环
+      } catch (retryError) {
+        lastError = retryError;
+        if (attempt < maxRetries) {
+          console.log(`[OSS上传] 第 ${attempt} 次上传失败，2秒后重试...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+
+    if (!result) {
+      throw lastError;
+    }
 
     console.log(`[OSS上传] 上传成功, URL: ${result.url}`);
 

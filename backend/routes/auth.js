@@ -25,7 +25,7 @@ router.post('/login', async (req, res) => {
   try {
     // 步骤一：查询 person 表中用户名是否存在
     const [users] = await db.execute(
-      'SELECT `id`, `username`, `password`, `real_name` FROM `person` WHERE `username` = ? LIMIT 1',
+      'SELECT `id`, `username`, `password`, `real_name`, `dept_id` FROM `person` WHERE `username` = ? LIMIT 1',
       [username]
     );
 
@@ -80,9 +80,12 @@ router.post('/login', async (req, res) => {
       code: 'LOGIN_SUCCESS',
       message: '登陆成功',
       data: {
+        id: user.id,
         userId: user.id,
         username: user.username,
         realName: user.real_name,
+        real_name: user.real_name,
+        dept_id: user.dept_id,
         roles: roles
       }
     });
