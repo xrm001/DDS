@@ -121,6 +121,18 @@ function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
           </Space>
         </div>
 
+        {/* 当前成交金额展示（如果有） */}
+        {order.deal_amount && (
+          <div style={{ marginBottom: 16, padding: 12, background: '#e6f7ff', borderRadius: 6, border: '1px solid #91d5ff' }}>
+            <Space size="large">
+              <span style={{ fontWeight: 600, color: '#595959' }}>当前成交金额：</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#52c41a' }}>
+                {order.currency === 'USD' ? '$' : '¥'}{Number(order.deal_amount).toFixed(2)}
+              </span>
+            </Space>
+          </div>
+        )}
+
         {/* 成交状态 */}
         <Form.Item
           label="成交状态"

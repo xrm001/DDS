@@ -1,5 +1,5 @@
 import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from 'antd';
-import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons';
+import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS, CUT_IN_LINE_STATUS } from '../../constants/enums';
 import { useState } from 'react';
 import ReceiverQueueModal from './modals/ReceiverQueueModal';
@@ -152,11 +152,11 @@ function OrderTable({
         return statusTag;
       },
     },
-    // 成交状态列（仅已完成订单显示）
+    // 成交状态列（仅已完成/已拒绝订单显示，hover显示成交金额）
     {
       title: '成交状态',
       key: 'deal_status',
-      width: 120,
+      width: 140,
       render: (_, record) => {
         // 只有已完成或已拒绝的订单才显示成交状态
         if (record.status !== 4 && record.status !== 5) {
@@ -166,8 +166,15 @@ function OrderTable({
         const dealStatus = record.deal_status || 7; // 默认待确认
         const dealConfig = DEAL_STATUS[dealStatus];
         
+        // 构建 tooltip 内容
+        let tooltipContent = '点击管理成交状态';
+        if (record.deal_amount) {
+          const currency = record.currency === 'USD' ? '$' : '¥';
+          tooltipContent += `\n成交金额: ${currency}${Number(record.deal_amount).toFixed(2)}`;
+        }
+        
         return (
-          <Tooltip title="点击管理成交状态">
+          <Tooltip title={tooltipContent}>
             <Tag 
               color={dealConfig.color}
               style={{ cursor: 'pointer' }}
@@ -176,32 +183,6 @@ function OrderTable({
               {dealConfig.label}
             </Tag>
           </Tooltip>
-        );
-      },
-    },
-    // 成交金额列
-    {
-      title: '成交金额',
-      key: 'deal_amount',
-      width: 120,
-      render: (_, record) => {
-        // 只有已完成或已拒绝的订单才显示成交金额
-        if (record.status !== 4 && record.status !== 5) {
-          return <span style={{ color: '#bfbfbf' }}>—</span>;
-        }
-        
-        if (!record.deal_amount) {
-          return <span style={{ color: '#bfbfbf' }}>未填写</span>;
-        }
-        
-        const currency = record.currency === 'USD' ? '$' : '¥';
-        return (
-          <Space size={4}>
-            <DollarOutlined style={{ color: '#52c41a' }} />
-            <span style={{ fontWeight: 600, color: '#52c41a' }}>
-              {currency}{record.deal_amount.toFixed(2)}
-            </span>
-          </Space>
         );
       },
     },
