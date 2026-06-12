@@ -1,34 +1,38 @@
-import { Form, Input, Select, DatePicker, Upload, Tag, Button, Row, Col, Card, Space, Tooltip } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { TASK_TYPES, OPERATION_TASK_TYPES } from '../../constants/enums';
+import { useMemo } from 'react';
+import { Card, Form, Input, Select, DatePicker, Upload, Row, Col, Button, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { BUSINESS_TASK_TYPES, OPERATION_TASK_TYPES } from '../../constants/enums';
 import { REGIONS } from '../../constants/regions';
 
 const { TextArea } = Input;
 
-// 单个任务下单表单卡片
-// props:
-//   task: 任务对象 { id, task_name, customer_name, ... orderType: 1|2 }
-//   index: 序号
-//   onChange(index, partial): 字段变更
-//   onRemove(index): 删除此任务
-//   showRemove: 是否显示删除按钮（仅 1 项时隐藏）
-//   userRoles: 用户角色数组，用于判断是否为运营下单人
+// 业务角色
+const BUSINESS_ROLE_NAMES = ['业务下单人', '业务主管下单人', '业务部门经理', '销售中心经理'];
+const BUSINESS_ROLE_CODES = ['business_orderer', 'business_supervisor', 'business_dept_manager', 'sales_center_manager'];
+
+/**
+ * 单个任务表单组件
+ * props: task, index, onChange, onRemove, showRemove, firstInputRef, userRoles
+ */
 function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, userRoles }) {
-  // 通用字段修改
   const update = (partial) => onChange(index, partial);
 
-  const isModify = task.orderType === 2;
+  // 角色判断
+  const isBusiness = useMemo(() => {
+    return userRoles?.some(r =>
+      BUSINESS_ROLE_NAMES.includes(r.role_name) || BUSINESS_ROLE_CODES.includes(r.role_code)
+    );
+  }, [userRoles]);
 
-  // 判断是否为运营下单人角色
-  const isOperationOrderer = userRoles?.some(r => 
-    r.role_name === '运营下单人' || r.role_code === 'operation_orderer'
-  );
+  // 任务类型选项
+  const businessOptions = useMemo(() =>
+    BUSINESS_TASK_TYPES.map(t => ({ value: t.value, label: t.label })), []);
 
-  // 根据角色选择任务类型
-  const taskTypeOptions = isOperationOrderer ? OPERATION_TASK_TYPES : TASK_TYPES;
+  const operationOptions = useMemo(() =>
+    OPERATION_TASK_TYPES.map(t => ({ value: t.value, label: t.label })), []);
 
-  // 文件上传（仅前端展示，不做真实上传）
-  const beforeUpload = () => false;
+  // 文件上传处理
+  const beforeUpload = () => false; // 阻止自动上传
 
   const handleFileChange = ({ fileList }) => {
     update({ fileList });
@@ -37,35 +41,19 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, 
   return (
     <Card
       size="small"
-      style={{
-        marginBottom: 12,
-        border: isModify ? '1.5px solid #ff4d4f' : '1px solid #e8e8e8',
-        boxShadow: isModify ? '0 0 0 3px rgba(255,77,79,0.08)' : 'none',
-      }}
+      style={{ marginBottom: 12, background: task.orderType === 2 ? '#fff7e6' : undefined }}
       title={
-        <Space>
-          <span style={{ color: '#8c8c8c' }}>任务 {index + 1}</span>
-          {isModify ? (
-            <Tag color="red" style={{ fontWeight: 600 }}>
-              修改单
-            </Tag>
-          ) : (
-            <Tag color="blue">原始订单</Tag>
-          )}
-          {isModify && task.originalOrderNo && (
-            <span style={{ color: '#ff4d4f', fontSize: 12 }}>
-              关联原单：{task.originalOrderNo}
-            </span>
-          )}
-        </Space>
+        <span style={{ fontSize: 13 }}>
+          {task.orderType === 2 ? `修改单（原单号：${task.originalOrderNo}）` : `任务 ${index + 1}`}
+        </span>
       }
       extra={
         showRemove && (
           <Button
             type="text"
             danger
-            icon={<DeleteOutlined />}
             size="small"
+            icon={<DeleteOutlined />}
             onClick={() => onRemove(index)}
           >
             删除
@@ -85,9 +73,9 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, 
             />
           </Form.Item>
         </Col>
-        
-        {/* 运营下单人隐藏客户名称和客户国籍 */}
-        {!isOperationOrderer && (
+
+        {/* 业务角色显示客户名称和客户国籍 */}
+        {isBusiness && (
           <>
             <Col span={8}>
               <Form.Item label="客户名称" required style={{ marginBottom: 12 }}>
@@ -116,16 +104,18 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, 
           </>
         )}
 
+        {/* 任务类型（业务/运营角色各自独立的选项） */}
         <Col span={8}>
           <Form.Item label="任务类型" required style={{ marginBottom: 12 }}>
             <Select
               placeholder="请选择任务类型"
               value={task.task_type_id || undefined}
               onChange={(v) => update({ task_type_id: v })}
-              options={taskTypeOptions.map((t) => ({ value: t.value, label: t.label }))}
+              options={isBusiness ? businessOptions : operationOptions}
             />
           </Form.Item>
         </Col>
+
         <Col span={8}>
           <Form.Item label="截止日期" required style={{ marginBottom: 12 }}>
             <DatePicker
@@ -133,6 +123,22 @@ function TaskForm({ task, index, onChange, onRemove, showRemove, firstInputRef, 
               placeholder="选择截止日期"
               value={task.deadline || null}
               onChange={(v) => update({ deadline: v })}
+            />
+          </Form.Item>
+        </Col>
+
+        <Col span={8}>
+          <Form.Item
+            label={<span style={{ color: task.is_special_order === 1 ? '#ff4d4f' : undefined, fontWeight: task.is_special_order === 1 ? 600 : undefined }}>特殊订单</span>}
+            style={{ marginBottom: 12 }}
+          >
+            <Select
+              value={task.is_special_order ?? 0}
+              onChange={(v) => update({ is_special_order: v })}
+              options={[
+                { value: 0, label: '否' },
+                { value: 1, label: <span style={{ color: '#ff4d4f', fontWeight: 600 }}>是</span> },
+              ]}
             />
           </Form.Item>
         </Col>

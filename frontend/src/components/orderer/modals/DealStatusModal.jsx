@@ -14,25 +14,39 @@ const { Option } = Select;
 function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [dealStatus, setDealStatus] = useState(7);
 
   // 判断当前用户角色
   const userRole = currentUser?.roles?.[0]?.role_name;
-  const isCreator = currentUser?.userId === order?.creator_id; // 下单人
-  const isReceiver = currentUser?.userId === order?.receiver_id; // 接单人
+  const isCreator = currentUser?.id === order?.creator_id; // 下单人
+  const isReceiver = currentUser?.id === order?.receiver_id; // 接单人
   const isManager = userRole === '负责人' || userRole === '管理员'; // 管理员/负责人
 
   // 是否可编辑（仅下单人可编辑）
   const canEdit = isCreator;
 
+  // deal_amount只在deal_status=9时可填写
+  const canEditAmount = dealStatus === 9;
+
   useEffect(() => {
     if (open && order) {
+      const status = order.deal_status || 7;
+      setDealStatus(status);
       form.setFieldsValue({
-        deal_status: order.deal_status || 7, // 默认待确认
+        deal_status: status,
         deal_amount: order.deal_amount || null,
         currency: order.currency || 'CNY',
       });
     }
   }, [open, order, form]);
+
+  const handleDealStatusChange = (value) => {
+    setDealStatus(value);
+    // deal_status≠9时，清空金额
+    if (value !== 9) {
+      form.setFieldsValue({ deal_amount: null });
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -46,30 +60,30 @@ function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
 
       setLoading(true);
       
-      // 模拟更新
-      setTimeout(() => {
-        if (onUpdate) {
-          onUpdate(order.id, {
-            deal_status: values.deal_status,
-            deal_amount: values.deal_amount,
-            currency: values.currency,
-            deal_updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-          });
-        }
-        message.success('成交状态更新成功');
-        onCancel();
-        setLoading(false);
-      }, 500);
+      if (onUpdate) {
+        await onUpdate(order.id, {
+          deal_status: values.deal_status,
+          deal_amount: values.deal_status === 9 ? values.deal_amount : null,
+          currency: values.currency,
+        });
+      }
+      message.success('成交状态更新成功');
+      onCancel();
+      setLoading(false);
     } catch (error) {
       setLoading(false);
+      if (error.message) {
+        message.error(error.message);
+      }
     }
   };
 
   if (!order) return null;
 
-  // 计算是否超过3天未更新
-  const dealUpdatedAt = order.deal_updated_at || order.completed_at;
-  const isOverdue = dealUpdatedAt && dayjs().diff(dayjs(dealUpdatedAt), 'day') > 3;
+  // 最后更新时间为completed_at值的后三天（更新截止时间）
+  const completedAt = order.completed_at;
+  const updateDeadline = completedAt ? dayjs(completedAt).add(3, 'day') : null;
+  const isOverdue = updateDeadline && dayjs().isAfter(updateDeadline);
 
   return (
     <Modal
@@ -139,7 +153,7 @@ function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
           name="deal_status"
           rules={[{ required: true, message: '请选择成交状态' }]}
         >
-          <Select disabled={!canEdit} placeholder="选择成交状态">
+          <Select disabled={!canEdit} placeholder="选择成交状态" onChange={handleDealStatusChange}>
             {Object.entries(DEAL_STATUS).map(([value, config]) => (
               <Option key={value} value={parseInt(value)}>
                 <Tag color={config.color}>{config.label}</Tag>
@@ -148,25 +162,25 @@ function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
           </Select>
         </Form.Item>
 
-        {/* 成交金额 */}
+        {/* 成交金额 - 仅deal_status=9(已成交)时可填写 */}
         <Form.Item
           label="成交金额"
           name="deal_amount"
-          rules={[
+          rules={canEditAmount ? [
             { required: true, message: '请输入成交金额' },
             { type: 'number', min: 0.01, message: '成交金额必须大于0' },
-          ]}
+          ] : []}
         >
           <InputNumber
-            disabled={!canEdit}
+            disabled={!canEdit || !canEditAmount}
             style={{ width: '100%' }}
-            placeholder="请输入成交金额"
+            placeholder={canEditAmount ? '请输入成交金额' : '仅"已成交"状态可填写金额'}
             precision={2}
             min={0.01}
             step={0.01}
             addonBefore={
               <Form.Item name="currency" noStyle>
-                <Select disabled={!canEdit} style={{ width: 80 }}>
+                <Select disabled={!canEdit || !canEditAmount} style={{ width: 80 }}>
                   <Option value="CNY">¥</Option>
                   <Option value="USD">$</Option>
                 </Select>
@@ -175,12 +189,12 @@ function DealStatusModal({ open, order, currentUser, onCancel, onUpdate }) {
           />
         </Form.Item>
 
-        {/* 最后更新时间 */}
-        {dealUpdatedAt && (
-          <Form.Item label="最后更新时间">
+        {/* 最后更新时间 = completed_at + 3天 */}
+        {updateDeadline && (
+          <Form.Item label="更新截止时间">
             <div style={{ color: isOverdue ? '#ff4d4f' : '#8c8c8c' }}>
-              {dealUpdatedAt}
-              {isOverdue && ' (已超期)'}
+              {updateDeadline.format('YYYY-MM-DD HH:mm:ss')}
+              {isOverdue && <Tag color="red" style={{ marginLeft: 8 }}>已超期</Tag>}
             </div>
           </Form.Item>
         )}

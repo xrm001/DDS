@@ -1,28 +1,49 @@
 import { useState, useEffect, useRef } from 'react';
-import { Modal, Input, Button, Upload, Image, Empty, message, Tag } from 'antd';
+import { Modal, Input, Button, Upload, Image, Empty, message, Tag, Spin } from 'antd';
 import { SendOutlined, PictureOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { MOCK_MESSAGES } from '../../../mock/messages';
+import { getOrderMessages, sendMessage, markMessagesRead } from '../../../api/orders';
 
 const { TextArea } = Input;
 
-// 沟通消息弹框
+// 沟通消息弹框（下单人和接单人共用）
 function ChatModal({ open, order, currentUser, onCancel }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [pendingFiles, setPendingFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
-  // 打开时加载该订单的聊天记录
+  // 打开时从后端加载该订单的聊天记录
   useEffect(() => {
     if (open && order) {
-      const list = MOCK_MESSAGES[order.id] || [];
-      setMessages([...list]);
+      loadMessages();
       setInputText('');
       setPendingFiles([]);
+      // 标记消息为已读
+      if (currentUser?.id) {
+        markMessagesRead(order.id, currentUser.id).catch(() => {});
+      }
     }
   }, [open, order]);
+
+  // 从后端加载消息列表
+  const loadMessages = async () => {
+    if (!order?.id) return;
+    setLoading(true);
+    try {
+      const result = await getOrderMessages(order.id);
+      if (result.success) {
+        setMessages(result.data || []);
+      }
+    } catch (error) {
+      console.error('加载消息失败:', error);
+      message.error('加载消息失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 消息滚动到底部
   useEffect(() => {
@@ -31,25 +52,29 @@ function ChatModal({ open, order, currentUser, onCancel }) {
     }
   }, [messages]);
 
-  // 发送消息（本地模拟）
-  const handleSend = () => {
+  // 发送消息（调用后端API）
+  const handleSend = async () => {
     if (!inputText.trim() && pendingFiles.length === 0) return;
     
-    // 处理多个附件
-    const attachmentUrls = pendingFiles.map(file => file.url || file.thumbUrl);
-    
-    const newMsg = {
-      id: Date.now(),
-      sender_id: currentUser?.userId || 0,
-      sender_name: currentUser?.realName || currentUser?.username || '我',
-      content: inputText.trim() || null,
-      attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
-      attachment_types: pendingFiles.map(file => file.type || 'file'),
-      created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setInputText('');
-    setPendingFiles([]);
+    try {
+      // 调用后端API发送消息
+      const result = await sendMessage(order.id, {
+        sender_id: currentUser.id,
+        receiver_id: order.creator_id === currentUser.id ? order.receiver_id : order.creator_id,
+        content: inputText.trim(),
+        attachment_id: null, // TODO: 附件上传后关联
+      });
+
+      if (result.success) {
+        // 发送成功后重新加载消息列表
+        await loadMessages();
+        setInputText('');
+        setPendingFiles([]);
+      }
+    } catch (error) {
+      console.error('发送消息失败:', error);
+      message.error('发送消息失败: ' + (error.message || '未知错误'));
+    }
   };
 
   // 选择文件（支持多文件）
@@ -133,11 +158,9 @@ function ChatModal({ open, order, currentUser, onCancel }) {
     return () => document.removeEventListener('paste', handlePaste);
   }, [open]);
 
-  // 判断是否为当前用户（下单人）发的消息
-  // 逻辑：如果发送人是订单的接单人（receiver_id），则显示在左侧；否则（下单人、自己）显示在右侧
+  // 判断是否为当前用户发的消息
   const isMine = (msg) => {
-    if (order?.receiver_id && msg.sender_id === order.receiver_id) return false;
-    return true;
+    return msg.sender_id === currentUser?.id;
   };
 
   return (
@@ -161,7 +184,9 @@ function ChatModal({ open, order, currentUser, onCancel }) {
           marginBottom: 12,
         }}
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="加载消息中..." /></div>
+        ) : messages.length === 0 ? (
           <Empty description="暂无聊天记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           messages.map((msg) => {
@@ -184,7 +209,7 @@ function ChatModal({ open, order, currentUser, onCancel }) {
                       marginBottom: 4,
                     }}
                   >
-                    {msg.sender_name} · {msg.created_at}
+                    {msg.sender_name || '未知用户'} · {dayjs(msg.created_at).format('YYYY-MM-DD HH:mm')}
                   </div>
                   <div
                     style={{
@@ -197,33 +222,21 @@ function ChatModal({ open, order, currentUser, onCancel }) {
                     }}
                   >
                     {msg.content && <div>{msg.content}</div>}
-                    {msg.attachment_urls && msg.attachment_urls.length > 0 && (
-                      <div style={{ marginTop: msg.content ? 8 : 0 }}>
-                        {msg.attachment_urls.map((url, index) => {
-                          const isImage = msg.attachment_types && msg.attachment_types[index] === 'image';
-                          return isImage ? (
-                            <Image
-                              key={index}
-                              src={url}
-                              width={180}
-                              style={{ marginTop: index > 0 ? 8 : 0, borderRadius: 4, display: 'block' }}
-                            />
-                          ) : (
-                            <div key={index} style={{ marginTop: index > 0 ? 8 : 0, padding: '8px 12px', background: 'rgba(255,255,255,0.2)', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <FileImageOutlined />
-                              <span style={{ fontSize: 12, wordBreak: 'break-all' }}>附件文件</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {/* 兼容旧数据格式 */}
+                    {/* 附件（后端返回单个 attachment_url） */}
                     {msg.attachment_url && (
-                      <Image
-                        src={msg.attachment_url}
-                        width={180}
-                        style={{ marginTop: msg.content ? 8 : 0, borderRadius: 4 }}
-                      />
+                      <div style={{ marginTop: msg.content ? 8 : 0 }}>
+                        <Image
+                          src={msg.attachment_url}
+                          width={180}
+                          style={{ borderRadius: 4 }}
+                          fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/+F/PQAJpAN4lMq8LAAAAABJRU5ErkJggg=="
+                        />
+                        {msg.attachment_name && (
+                          <div style={{ fontSize: 11, color: mine ? 'rgba(255,255,255,0.7)' : '#8c8c8c', marginTop: 4 }}>
+                            {msg.attachment_name}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

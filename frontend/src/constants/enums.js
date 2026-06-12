@@ -1,23 +1,25 @@
-// 任务类型枚举（与 SQL task_types ENUM 对齐）
-export const TASK_TYPES = [
-  { value: 1, label: '平面设计', code: 'graphic_design' },
-  { value: 2, label: '全案设计', code: 'full_case_design' },
-  { value: 3, label: '3D设计', code: '3d_design' },
-  { value: 4, label: '摄影任务', code: 'photography' },
-  { value: 5, label: '护肤新品', code: 'skincare' },
-  { value: 6, label: '香水新品', code: 'perfume' },
-  { value: 7, label: 'banner', code: 'banner' },
-  { value: 8, label: '医药新品', code: 'pharmaceutical' },
+// 任务类型枚举（与数据库 task_types 表 ID 对齐）
+// 业务下单人/业务主管/业务部门经理/销售中心经理可选
+export const BUSINESS_TASK_TYPES = [
+  { value: 1, label: '平面设计', code: 'graphic' },
+  { value: 2, label: '全案设计', code: 'brand' },
+  { value: 3, label: '3D设计', code: '3d' },
 ];
 
-// 运营下单人专用任务类型（去掉了平面设计、3D设计、摄影任务）
+// 运营下单人/运营主管/新媒体运营主管/新媒体运营下单人/市场运营部门经理可选
+// 新品开发对应 护肤新品(6)+医药新品(7)+香水新品(8) 三个子类型
 export const OPERATION_TASK_TYPES = [
-  { value: 2, label: '全案设计', code: 'full_case_design' },
-  { value: 5, label: '护肤新品', code: 'skincare' },
-  { value: 6, label: '香水新品', code: 'perfume' },
-  { value: 7, label: 'banner', code: 'banner' },
-  { value: 8, label: '医药新品', code: 'pharmaceutical' },
+  { value: 12, label: '新品开发', code: 'new_product', subTypes: [6, 7, 8] },
+  { value: 9, label: '海报设计', code: 'poster' },
+  { value: 14, label: '店铺设计', code: 'shop' },
+  { value: 13, label: '包装盒设计', code: 'package' },
+  { value: 11, label: '画册设计', code: 'catalog' },
+  { value: 4, label: '摄影', code: 'photo' },
+  { value: 10, label: '短视频制作', code: 'video' },
 ];
+
+// 兼容旧名称
+export const TASK_TYPES = BUSINESS_TASK_TYPES;
 
 // 订单类型
 export const ORDER_TYPES = {
@@ -55,6 +57,22 @@ export const DEAL_STATUS = {
   9: { label: '已成交', color: 'success' },
   10: { label: '未成交', color: 'error' },
 };
+
+// 分配人员选项（运营相关角色可见）
+export const ASSIGNEE_OPTIONS = [
+  {
+    value: 'ding_sihua',
+    label: '丁思华',
+    group: 'A',
+    members: ['符晓冰', '林创杰', '张梓杰', '刘金豪'],
+  },
+  {
+    value: 'cai_xiaoping',
+    label: '蔡晓萍',
+    group: 'B',
+    members: ['曾苑婷', '马凯特', '盘小楚', '陈宇嫣'],
+  },
+];
 
 // 评价维度（下单人视角）
 export const EVAL_DIMENSIONS = [

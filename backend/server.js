@@ -59,7 +59,7 @@ function buildFrontend() {
   }
 }
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   // 启动前先构建前端
   buildFrontend();
   

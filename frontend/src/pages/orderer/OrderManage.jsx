@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Card, Button, Space, Modal, message, Divider, Empty, Input, Badge, Tooltip, Tabs } from 'antd';
 import { PlusOutlined, ReloadOutlined, CheckCircleOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -14,8 +14,7 @@ import DealStatusModal from '../../components/orderer/modals/DealStatusModal';
 import CutInLineRequestModal from '../../components/orderer/modals/CutInLineRequestModal';
 import OrderFilterModal from '../../components/orderer/modals/OrderFilterModal';
 import NotificationCenter from '../../components/orderer/NotificationCenter';
-import { MOCK_ORDERS } from '../../mock/orders';
-import { submitOrder } from '../../api/orders';
+import { submitOrder, getOrderList, recallOrder, updateOrder, updateDealStatus, submitEvaluation, reviewOrder } from '../../api/orders';
 
 // 创建空任务对象
 const emptyTask = (overrides = {}) => ({
@@ -31,6 +30,7 @@ const emptyTask = (overrides = {}) => ({
   orderType: 1, // 1=原始订单, 2=修改单
   originalOrderId: null,
   originalOrderNo: null,
+  is_special_order: 0, // 0=否, 1=是
   ...overrides,
 });
 
@@ -49,7 +49,8 @@ function OrderManage() {
   // 任务下单区：tasks 数组
   const [tasks, setTasks] = useState([emptyTask()]);
   // 订单列表数据
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   // 视图模式：'table' 表格视图，'board' 看板视图
   const [viewMode, setViewMode] = useState('table');
   // 当前登录用户
@@ -76,6 +77,28 @@ function OrderManage() {
   const [searchText, setSearchText] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterValues, setFilterValues] = useState({});
+
+  // 加载订单列表
+  const fetchOrders = useCallback(async () => {
+    if (!currentUser.id) return;
+    setOrdersLoading(true);
+    try {
+      const result = await getOrderList(currentUser.id);
+      if (result.success) {
+        setOrders(result.data);
+      }
+    } catch (error) {
+      console.error('获取订单列表失败:', error);
+      message.error('获取订单列表失败: ' + (error.message || '未知错误'));
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [currentUser.id]);
+
+  // 页面加载时获取订单
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   // 计算有效筛选条件数（用于 Badge 数字提示）
   const activeFilterCount = useMemo(() => {
@@ -171,10 +194,12 @@ function OrderManage() {
     });
   };
 
-  // 判断是否为运营下单人角色
+  // 判断是否为运营相关角色（运营下单人、运营主管、新媒体运营主管、新媒体运营下单人、市场运营部门经理）
   const isOperationOrderer = useMemo(() => {
+    const OPERATION_ROLE_NAMES = ['运营下单人', '运营主管下单人', '新媒体运营主管下单人', '新媒体运营下单人', '市场运营部门经理'];
+    const OPERATION_ROLE_CODES = ['operation_orderer', 'operation_supervisor', 'newmedia_supervisor', 'newmedia_operation_orderer', 'operation_dept_manager'];
     return currentUser.roles?.some(r => 
-      r.role_name === '运营下单人' || r.role_code === 'operation_orderer'
+      OPERATION_ROLE_NAMES.includes(r.role_name) || OPERATION_ROLE_CODES.includes(r.role_code)
     );
   }, [currentUser.roles]);
 
@@ -254,7 +279,7 @@ function OrderManage() {
           throw new Error('截止日期无效');
         }
 
-        // 调用后端API
+        // 调用后端API（下单人不能指定接单人，系统自动派发）
         const result = await submitOrder({
           task_name: task.task_name,
           // 运营下单人时 customer_name 和 customer_region 为 null
@@ -264,7 +289,9 @@ function OrderManage() {
           deadline: deadlineDate.format('YYYY-MM-DD HH:mm:ss'),
           requirement_desc: task.requirement_desc,
           creator_id: currentUser.id || 2, // TODO: 从全局状态获取
-          receiver_id: task.receiver_id || null,
+          order_type: task.orderType || 1, // 1=原始订单, 2=修改单
+          original_order_id: task.originalOrderId || null, // 修改单关联原单ID
+          is_special_order: task.is_special_order ?? 0, // 特殊订单
           attachments
         });
 
@@ -272,20 +299,32 @@ function OrderManage() {
       });
 
       const results = await Promise.all(submitPromises);
-      const successCount = results.filter(r => r.success).length;
+      const successResults = results.filter(r => r.success && !r.data?.dispatch_failed);
+      const failedResults = results.filter(r => r.data?.dispatch_failed);
 
-      // 屏幕中央显示"提交成功"
-      Modal.success({
-        title: '提交成功',
-        content: `已成功提交 ${successCount}/${tasks.length} 个任务订单`,
-        centered: true,
-        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-        okText: '确定',
-        onOk: () => setTasks([emptyTask()]),
-      });
+      if (failedResults.length > 0) {
+        // 有派发失败的订单，显示"下单异常"
+        Modal.warning({
+          title: '下单异常',
+          content: `共提交 ${results.length} 个订单，其中 ${failedResults.length} 个派发失败（订单已创建但未分配接单人）`,
+          centered: true,
+          okText: '确定',
+          onOk: () => setTasks([emptyTask()]),
+        });
+      } else {
+        // 全部派发成功
+        Modal.success({
+          title: '提交成功',
+          content: `已成功提交 ${successResults.length}/${tasks.length} 个任务订单`,
+          centered: true,
+          icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+          okText: '确定',
+          onOk: () => setTasks([emptyTask()]),
+        });
+      }
 
-      // TODO: 刷新订单列表
-      // setOrders([...orders, ...newOrders]);
+      // 刷新订单列表
+      fetchOrders();
 
     } catch (error) {
       console.error('提交订单错误:', error);
@@ -300,17 +339,36 @@ function OrderManage() {
     setEditOpen(true);
   };
 
-  const handleEditOk = (updated) => {
-    setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));
-    setEditOpen(false);
-    message.success('订单修改成功');
+  const handleEditOk = async (updated) => {
+    try {
+      const result = await updateOrder(updated.id, {
+        task_name: updated.task_name,
+        requirement_desc: updated.requirement_desc,
+        task_type_id: updated.task_type_id,
+        customer_name: updated.customer_name,
+        customer_region: updated.customer_region,
+        attachments: updated.attachments || [],
+      });
+      if (result.success) {
+        setEditOpen(false);
+        message.success('订单修改成功');
+        fetchOrders(); // 刷新列表
+      } else {
+        message.error(result.message || '修改失败');
+      }
+    } catch (error) {
+      throw error; // 抛给 EditOrderModal 处理
+    }
   };
 
-  const handleRecall = (order) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === order.id ? { ...o, status: 6 } : o))
-    );
-    message.success(`订单 ${order.order_no} 已撤回`);
+  const handleRecall = async (order) => {
+    try {
+      await recallOrder(order.id, '用户撤回');
+      message.success(`订单 ${order.order_no} 已撤回`);
+      fetchOrders();
+    } catch (error) {
+      message.error('撤回失败: ' + (error.message || '未知错误'));
+    }
   };
 
   const handleDetail = (order) => {
@@ -345,10 +403,16 @@ function OrderManage() {
   };
 
   // 更新成交状态
-  const handleDealUpdate = (orderId, dealData) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, ...dealData } : o))
-    );
+  const handleDealUpdate = async (orderId, dealData) => {
+    try {
+      await updateDealStatus(orderId, dealData);
+      // 更新本地状态
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, ...dealData } : o))
+      );
+    } catch (error) {
+      message.error('更新成交状态失败: ' + (error.message || '未知错误'));
+    }
   };
 
   // 处理插队申请（status=3）
@@ -491,64 +555,51 @@ function OrderManage() {
     setCutInLineRequest(null);
   };
 
-  // 驳回：订单状态回退为"进行中"，并把 pending 条目标记为 rejected 存入历史
-  const handleReject = (order, remark) => {
-    const reviewedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== order.id) return o;
-        const history = (o.acceptance_history || []).map((h) =>
-          h.review_result === 'pending'
-            ? { ...h, review_result: 'rejected', review_remark: remark, reviewed_at: reviewedAt }
-            : h
-        );
-        return { ...o, status: 2, acceptance_history: history };
-      })
-    );
-    setAcceptanceOpen(false);
-    message.warning(`订单 ${order.order_no} 已驳回，退回进行中`);
+  // 驳回：订单状态回退为“进行中”
+  const handleReject = async (order, remark) => {
+    try {
+      await reviewOrder(order.id, { review_result: 'rejected', review_remark: remark });
+      setAcceptanceOpen(false);
+      message.warning(`订单 ${order.order_no} 已驳回，退回进行中`);
+      fetchOrders();
+    } catch (error) {
+      message.error('驳回失败: ' + (error.message || '未知错误'));
+    }
+  };
+  
+  // 通过：订单状态置为“已完成”
+  const handleApprove = async (order, remark) => {
+    try {
+      await reviewOrder(order.id, { review_result: 'approved', review_remark: remark || '通过验收' });
+      setAcceptanceOpen(false);
+      message.success(`订单 ${order.order_no} 已验收通过，订单完结`);
+      fetchOrders();
+    } catch (error) {
+      message.error('审核失败: ' + (error.message || '未知错误'));
+    }
   };
 
-  // 通过：订单状态置为"已完成"，并把 pending 条目标记为 approved 存入历史
-  const handleApprove = (order, remark) => {
-    const reviewedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== order.id) return o;
-        const history = (o.acceptance_history || []).map((h) =>
-          h.review_result === 'pending'
-            ? { ...h, review_result: 'approved', review_remark: remark || '通过验收', reviewed_at: reviewedAt }
-            : h
-        );
-        return { ...o, status: 4, completed_at: reviewedAt, acceptance_history: history };
-      })
-    );
-    setAcceptanceOpen(false);
-    message.success(`订单 ${order.order_no} 已验收通过，订单完结`);
-  };
-
-  const handleEvalOk = (payload) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === payload.orderId
-          ? {
-              ...o,
-              is_evaluated_by_creator: 1,
-              evaluation: {
-                score_completion: payload.score_completion || 0,
-                score_communication: payload.score_communication || 0,
-                score_understanding: payload.score_understanding || 0,
-                score_technical: payload.score_technical || 0,
-                score_design: payload.score_design || 0,
-                overall_score: payload.overall_score,
-                comment: payload.comment,
-              },
-            }
-          : o
-      )
-    );
-    setEvalOpen(false);
-    message.success('评价已提交');
+  const handleEvalOk = async (payload) => {
+    try {
+      const order = orders.find(o => o.id === payload.orderId);
+      await submitEvaluation(payload.orderId, {
+        evaluator_id: currentUser.id,
+        evaluatee_id: order?.receiver_id,
+        eval_type: 1, // 下单人评接单人
+        score_completion: payload.score_completion || null,
+        score_communication_creator: payload.score_communication || null,
+        score_understanding: payload.score_understanding || null,
+        score_technical: payload.score_technical || null,
+        score_design: payload.score_design || null,
+        overall_score: payload.overall_score,
+        comment: payload.comment,
+      });
+      setEvalOpen(false);
+      message.success('评价已提交');
+      fetchOrders();
+    } catch (error) {
+      message.error('评价提交失败: ' + (error.message || '未知错误'));
+    }
   };
 
   // 修改单：跳转至下单区，预填原单数据，高亮为修改单
@@ -565,8 +616,8 @@ function OrderManage() {
       originalOrderId: order.id,
       originalOrderNo: order.order_no,
     });
-    // prepend 到任务列表顶部
-    setTasks((prev) => [newTask, ...prev]);
+    // 修改单模式下只显示修改单，替换所有任务
+    setTasks([newTask]);
     // 滚动到下单区并 focus 首个输入框
     setTimeout(() => {
       formRegionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -590,7 +641,11 @@ function OrderManage() {
           }
           extra={
             <Space>
-              <Button icon={<PlusOutlined />} onClick={handleAddTask}>
+              <Button
+                icon={<PlusOutlined />}
+                onClick={handleAddTask}
+                disabled={tasks.some(t => t.orderType === 2)}
+              >
                 添加任务
               </Button>
               <Button icon={<ReloadOutlined />} onClick={handleReset}>

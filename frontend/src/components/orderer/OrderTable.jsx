@@ -2,6 +2,7 @@ import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from '
 import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS, CUT_IN_LINE_STATUS } from '../../constants/enums';
 import { useState } from 'react';
+import dayjs from 'dayjs';
 import ReceiverQueueModal from './modals/ReceiverQueueModal';
 import CutInLineModal from './modals/CutInLineModal';
 import CutInLineProcessModal from './modals/CutInLineProcessModal';
@@ -78,7 +79,8 @@ function OrderTable({
       title: '下单时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 160,
+      width: 120,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD') : '-',
     },
     {
       title: '结束时间',
