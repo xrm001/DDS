@@ -25,6 +25,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const orderRoutes = require('./routes/orders');
+const notifyRoutes = require('./routes/notify');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use(express.static(distPath));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/notify', notifyRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

@@ -100,6 +100,36 @@ function OrderManage() {
     fetchOrders();
   }, [fetchOrders]);
 
+  // 监听通知中心事件：打开聊天 + 订单置顶
+  useEffect(() => {
+    const handleOpenChat = (e) => {
+      const { orderId } = e.detail || {};
+      if (!orderId) return;
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setActiveOrder(order);
+        setChatOpen(true);
+      }
+    };
+    const handleScrollToOrder = (e) => {
+      const { orderId } = e.detail || {};
+      if (!orderId) return;
+      // 将目标订单移到列表顶部
+      setOrders(prev => {
+        const idx = prev.findIndex(o => o.id === orderId);
+        if (idx <= 0) return prev;
+        const target = prev[idx];
+        return [target, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      });
+    };
+    window.addEventListener('dds-open-chat', handleOpenChat);
+    window.addEventListener('dds-scroll-to-order', handleScrollToOrder);
+    return () => {
+      window.removeEventListener('dds-open-chat', handleOpenChat);
+      window.removeEventListener('dds-scroll-to-order', handleScrollToOrder);
+    };
+  }, [orders]);
+
   // 计算有效筛选条件数（用于 Badge 数字提示）
   const activeFilterCount = useMemo(() => {
     return Object.values(filterValues).filter((v) => {

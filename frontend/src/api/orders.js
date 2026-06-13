@@ -3,6 +3,23 @@ import axios from 'axios';
 const API_BASE = '/api';
 
 /**
+ * 获取单个订单详情
+ * @param {number} orderId - 订单ID
+ * @returns {Promise} 订单详情
+ */
+export const getOrderDetail = async (orderId) => {
+  try {
+    const response = await axios.get(`${API_BASE}/orders/detail/${orderId}`);
+    return response.data;
+  } catch (error) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw error;
+  }
+};
+
+/**
  * 提交订单
  * @param {Object} orderData - 订单数据
  * @returns {Promise} 提交结果

@@ -1,16 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Layout } from 'antd';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import TopBar from '../../components/orderer/TopBar';
 import Sidebar from '../../components/manager/Sidebar';
-import { MOCK_ORDERS } from '../../mock/orders';
 
 const { Header, Sider, Content } = Layout;
 
-// 负责人主布局：顶部 + 左侧边栏 + 右侧主内容
-// 与下单人/接单人布局风格一致（三段式 + 全局配色）
+// 负责人主布局
 function ManagerLayout() {
-  // 从 localStorage 读取用户信息
   const user = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('dds_user') || '{}');
@@ -19,10 +16,26 @@ function ManagerLayout() {
     }
   }, []);
 
-  // 负责人视角：全公司所有订单的未读消息合计
-  const unreadCount = useMemo(() => {
-    return MOCK_ORDERS.reduce((sum, o) => sum + (o.unread_messages || 0), 0);
-  }, []);
+  const location = useLocation();
+
+  // 路由变化时检查 localStorage 待处理动作
+  useEffect(() => {
+    const raw = localStorage.getItem('dds_pending_action');
+    if (!raw) return;
+    localStorage.removeItem('dds_pending_action');
+
+    try {
+      const action = JSON.parse(raw);
+      setTimeout(() => {
+        if (action.type === 'chat' && action.orderId) {
+          window.dispatchEvent(new CustomEvent('dds-open-chat', { detail: action }));
+          window.dispatchEvent(new CustomEvent('dds-scroll-to-order', { detail: action }));
+        } else if (action.type === 'scroll' && action.orderId) {
+          window.dispatchEvent(new CustomEvent('dds-scroll-to-order', { detail: action }));
+        }
+      }, 500);
+    } catch { /* ignore */ }
+  }, [location.pathname]);
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -36,7 +49,7 @@ function ManagerLayout() {
           zIndex: 10,
         }}
       >
-        <TopBar user={user} unreadCount={unreadCount} />
+        <TopBar user={user} />
       </Header>
       <Layout style={{ height: 'calc(100vh - 60px)' }}>
         <Sider

@@ -51,6 +51,14 @@ function ReceiverOrderTable({
       ellipsis: true,
     },
     {
+      title: '下单人',
+      dataIndex: 'creator_name',
+      key: 'creator_name',
+      width: 100,
+      ellipsis: true,
+      render: (name) => name || '-',
+    },
+    {
       title: '任务类型',
       dataIndex: 'task_type_id',
       key: 'task_type_id',

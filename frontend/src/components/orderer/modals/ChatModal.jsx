@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, Button, Upload, Image, Empty, message, Tag, Spin } from 'antd';
 import { SendOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getOrderMessages, sendMessage, markMessagesRead } from '../../../api/orders';
+import { getOrderMessages, sendMessage, markMessagesRead, getOrderDetail } from '../../../api/orders';
 
 const { TextArea } = Input;
 
@@ -12,15 +12,27 @@ function ChatModal({ open, order, currentUser, onCancel }) {
   const [inputText, setInputText] = useState('');
   const [pendingFiles, setPendingFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [resolvedOrder, setResolvedOrder] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
-  // 打开时从后端加载该订单的聊天记录
+  // 打开时：补全订单信息 + 加载消息
   useEffect(() => {
     if (open && order) {
-      loadMessages();
+      setResolvedOrder(order);
       setInputText('');
       setPendingFiles([]);
+
+      // 如果 order 缺少 creator_id/receiver_id（从通知中心打开时），从后端补全
+      if (!order.creator_id && !order.receiver_id) {
+        getOrderDetail(order.id).then(res => {
+          if (res.success && res.data) {
+            setResolvedOrder({ ...order, ...res.data });
+          }
+        }).catch(() => {});
+      }
+
+      loadMessages();
       // 标记消息为已读
       if (currentUser?.id) {
         markMessagesRead(order.id, currentUser.id).catch(() => {});
@@ -56,11 +68,12 @@ function ChatModal({ open, order, currentUser, onCancel }) {
   const handleSend = async () => {
     if (!inputText.trim() && pendingFiles.length === 0) return;
     
+    const o = resolvedOrder || order;
     try {
       // 调用后端API发送消息
-      const result = await sendMessage(order.id, {
+      const result = await sendMessage(o.id, {
         sender_id: currentUser.id,
-        receiver_id: order.creator_id === currentUser.id ? order.receiver_id : order.creator_id,
+        receiver_id: o.creator_id === currentUser.id ? o.receiver_id : o.creator_id,
         content: inputText.trim(),
         attachment_id: null, // TODO: 附件上传后关联
       });
@@ -165,7 +178,7 @@ function ChatModal({ open, order, currentUser, onCancel }) {
 
   return (
     <Modal
-      title={`沟通消息 - ${order?.order_no || ''}`}
+      title={`沟通消息 - ${(resolvedOrder || order)?.order_no || ''}`}
       open={open}
       onCancel={onCancel}
       footer={null}

@@ -53,6 +53,35 @@ function ReceiverOrderManage() {
     fetchOrders();
   }, [currentUser]);
 
+  // 监听通知中心事件：打开聊天 + 订单置顶
+  useEffect(() => {
+    const handleOpenChat = (e) => {
+      const { orderId } = e.detail || {};
+      if (!orderId) return;
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setActiveOrder(order);
+        setChatOpen(true);
+      }
+    };
+    const handleScrollToOrder = (e) => {
+      const { orderId } = e.detail || {};
+      if (!orderId) return;
+      setOrders(prev => {
+        const idx = prev.findIndex(o => o.id === orderId);
+        if (idx <= 0) return prev;
+        const target = prev[idx];
+        return [target, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      });
+    };
+    window.addEventListener('dds-open-chat', handleOpenChat);
+    window.addEventListener('dds-scroll-to-order', handleScrollToOrder);
+    return () => {
+      window.removeEventListener('dds-open-chat', handleOpenChat);
+      window.removeEventListener('dds-scroll-to-order', handleScrollToOrder);
+    };
+  }, [orders]);
+
   // 刷新订单列表
   const refreshOrders = async () => {
     const myId = currentUser?.userId;

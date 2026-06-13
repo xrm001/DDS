@@ -9,6 +9,18 @@ import ReceiverDashboard from '../pages/receiver/ReceiverDashboard';
 import ManagerLayout from '../pages/manager/ManagerLayout';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ManagerOrderList from '../pages/manager/ManagerOrderList';
+import AdminLayout from '../pages/admin/AdminLayout';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import UserManage from '../pages/admin/UserManage';
+import RoleManage from '../pages/admin/RoleManage';
+import DepartmentManage from '../pages/admin/DepartmentManage';
+import TaskTypeManage from '../pages/admin/TaskTypeManage';
+import DispatchRuleManage from '../pages/admin/DispatchRuleManage';
+import GlobalOrderMonitor from '../pages/admin/GlobalOrderMonitor';
+import StatisticsReport from '../pages/admin/StatisticsReport';
+import NotificationManage from '../pages/admin/NotificationManage';
+import OperationLog from '../pages/admin/OperationLog';
+import PersonnelSchedule from '../pages/admin/PersonnelSchedule';
 
 // 登录守卫：未登录重定向到 /login
 const RequireAuth = ({ children }) => {
@@ -53,14 +65,31 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      // index 直达工作看板
       { index: true, element: <ManagerDashboard /> },
-      // 复用下单人页面
       { path: 'orderer', element: <OrderManage /> },
-      // 复用接单人页面
       { path: 'receiver', element: <ReceiverOrderManage /> },
-      // 全公司订单列表
       { path: 'orders', element: <ManagerOrderList /> },
+    ],
+  },
+  {
+    path: '/admin',
+    element: (
+      <RequireAuth>
+        <AdminLayout />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <AdminDashboard /> },
+      { path: 'users', element: <UserManage /> },
+      { path: 'roles', element: <RoleManage /> },
+      { path: 'departments', element: <DepartmentManage /> },
+      { path: 'task-types', element: <TaskTypeManage /> },
+      { path: 'dispatch-rules', element: <DispatchRuleManage /> },
+      { path: 'orders', element: <GlobalOrderMonitor /> },
+      { path: 'statistics', element: <StatisticsReport /> },
+      { path: 'notifications', element: <NotificationManage /> },
+      { path: 'schedule', element: <PersonnelSchedule /> },
+      { path: 'logs', element: <OperationLog /> },
     ],
   },
   { path: '*', element: <Navigate to="/login" replace /> },

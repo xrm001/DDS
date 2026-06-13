@@ -334,7 +334,7 @@ router.post('/submit', async (req, res) => {
         const queueNumber = queueRows[0].cnt;
 
         await connection.execute(
-          'UPDATE orders SET receiver_id = ?, status = 0, queue_number = ? WHERE id = ?',
+          'UPDATE orders SET receiver_id = ?, status = 0, queue_number = ?, is_read = 0 WHERE id = ?',
           [assignedReceiverId, queueNumber, orderId]
         );
         console.log(`[订单派发] 自动派发成功, 接单人ID: ${assignedReceiverId}, 排队序号: ${queueNumber}, status=0(待接单)`);
@@ -435,6 +435,28 @@ router.post('/submit', async (req, res) => {
  * 获取下单人的订单列表
  * 查询: orders + task_types + person(receiver) + cut_in_line_requests
  */
+
+/**
+ * GET /api/orders/detail/:id
+ * 获取单个订单详情（通知中心等场景使用）
+ */
+router.get('/detail/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await db.execute(
+      `SELECT o.id, o.order_no, o.task_name, o.creator_id, o.receiver_id, o.status
+       FROM orders o WHERE o.id = ?`,
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: '订单不存在' });
+    }
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/list', async (req, res) => {
   const { creator_id } = req.query;
 
@@ -953,7 +975,7 @@ router.put('/:id/accept', async (req, res) => {
     const newStatus = queueNumber > 0 ? 2 : 1;
 
     await db.execute(
-      'UPDATE orders SET status = ? WHERE id = ?',
+      'UPDATE orders SET status = ?, is_read = 0 WHERE id = ?',
       [newStatus, id]
     );
 
@@ -985,7 +1007,7 @@ router.put('/:id/submit-acceptance', async (req, res) => {
     }
 
     await db.execute(
-      'UPDATE orders SET status = 3 WHERE id = ?',
+      'UPDATE orders SET status = 3, is_read = 0 WHERE id = ?',
       [id]
     );
 
@@ -1024,7 +1046,7 @@ router.put('/:id/recall', async (req, res) => {
     }
 
     await db.execute(
-      'UPDATE orders SET status = 5, cancel_reason = ? WHERE id = ?',
+      'UPDATE orders SET status = 5, cancel_reason = ?, is_read = 0 WHERE id = ?',
       [cancel_reason || '用户撤回', id]
     );
 
@@ -1175,7 +1197,7 @@ router.post('/:id/review', async (req, res) => {
     // 更新订单状态
     if (review_result === 'approved') {
       await db.execute(
-        'UPDATE orders SET status = 4, completed_at = ? WHERE id = ?',
+        'UPDATE orders SET status = 4, completed_at = ?, is_read = 0 WHERE id = ?',
         [now, id]
       );
       // 订单完成后，评价变为可见（is_visible_to_evaluatee=1）
@@ -1186,7 +1208,7 @@ router.post('/:id/review', async (req, res) => {
     } else {
       // 驳回: 订单回退为进行中
       await db.execute(
-        'UPDATE orders SET status = 2 WHERE id = ?',
+        'UPDATE orders SET status = 2, is_read = 0 WHERE id = ?',
         [id]
       );
     }
@@ -1306,7 +1328,7 @@ router.put('/:id/assign', async (req, res) => {
 
     // 更新订单的接单人
     await db.execute(
-      'UPDATE orders SET receiver_id = ?, status = 1 WHERE id = ? AND status = 0',
+      'UPDATE orders SET receiver_id = ?, status = 1, is_read = 0 WHERE id = ? AND status = 0',
       [receiver_id, id]
     );
 

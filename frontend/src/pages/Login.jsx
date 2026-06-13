@@ -29,12 +29,13 @@ function Login() {
         setUserData(result.data);
         // 将用户信息写入 localStorage 供后续页面使用
         localStorage.setItem('dds_user', JSON.stringify(result.data));
-        // 按角色分流跳转：负责人 -> /manager，接单人/接单组长 -> /receiver，否则 -> /orderer
+        // 按角色分流跳转：系统管理员 -> /admin，负责人/经理/主管 -> /manager，接单人/接单组长 -> /receiver，否则 -> /orderer
         const roles = Array.isArray(result.data?.roles) ? result.data.roles : [];
         const hasRole = (kw) =>
           roles.some((r) => new RegExp(kw).test(r?.role_name || ''));
         let targetPath = '/orderer';
-        if (hasRole('负责人|经理|主管|管理员')) targetPath = '/manager';
+        if (hasRole('系统管理员')) targetPath = '/admin';
+        else if (hasRole('负责人|经理|主管')) targetPath = '/manager';
         else if (hasRole('接单人|接单组长')) targetPath = '/receiver';
         setTimeout(() => {
           navigate(targetPath);

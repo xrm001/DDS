@@ -1,18 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Layout } from 'antd';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import TopBar from '../../components/orderer/TopBar';
 import Sidebar from '../../components/orderer/Sidebar';
-import ChatModal from '../../components/orderer/modals/ChatModal';
-import { MOCK_ORDERS } from '../../mock/orders';
-import { MOCK_NOTIFICATIONS } from '../../mock/messages';
-import dayjs from 'dayjs';
 
 const { Header, Sider, Content } = Layout;
 
 // 下单人主布局：顶部 + 左侧边栏 + 右侧主内容
 function OrdererLayout() {
-  // 从 localStorage 读取用户信息
   const user = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('dds_user') || '{}');
@@ -21,52 +16,27 @@ function OrdererLayout() {
     }
   }, []);
 
-  // 通知列表
-  const [notifications, setNotifications] = useState(
-    MOCK_NOTIFICATIONS.filter(n => n.user_id === (user.id || 2))
-  );
+  const location = useLocation();
 
-  // 聊天弹框状态
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatOrder, setChatOrder] = useState(null);
+  // 路由变化时检查 localStorage 中的待处理动作（从通知中心跳转过来）
+  useEffect(() => {
+    const raw = localStorage.getItem('dds_pending_action');
+    if (!raw) return;
+    localStorage.removeItem('dds_pending_action');
 
-  // 全局未读消息数（订单所有未读消息之和）
-  const unreadCount = useMemo(
-    () => MOCK_ORDERS.reduce((sum, o) => sum + (o.unread_messages || 0), 0),
-    []
-  );
-
-  // 点击通知
-  const handleNotificationClick = (notification) => {
-    // 找到对应的订单，打开聊天弹框
-    if (notification.related_order_id) {
-      const order = MOCK_ORDERS.find(o => o.id === notification.related_order_id);
-      if (order) {
-        setChatOrder(order);
-        setChatOpen(true);
-      }
-    }
-  };
-
-  // 标记单条已读
-  const handleMarkAsRead = (notificationId) => {
-    setNotifications(prev =>
-      prev.map(n =>
-        n.id === notificationId
-          ? { ...n, is_read: 1 }
-          : n
-      )
-    );
-    // TODO: 调用后端API更新 notifications.is_read = 1
-  };
-
-  // 标记全部已读
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, is_read: 1 }))
-    );
-    // TODO: 调用后端API更新所有 notifications.is_read = 1
-  };
+    try {
+      const action = JSON.parse(raw);
+      // 延迟执行，确保 Outlet 子组件已渲染
+      setTimeout(() => {
+        if (action.type === 'chat' && action.orderId) {
+          window.dispatchEvent(new CustomEvent('dds-open-chat', { detail: action }));
+          window.dispatchEvent(new CustomEvent('dds-scroll-to-order', { detail: action }));
+        } else if (action.type === 'scroll' && action.orderId) {
+          window.dispatchEvent(new CustomEvent('dds-scroll-to-order', { detail: action }));
+        }
+      }, 500);
+    } catch { /* ignore */ }
+  }, [location.pathname]);
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -80,13 +50,7 @@ function OrdererLayout() {
           zIndex: 10,
         }}
       >
-        <TopBar
-          user={user}
-          notifications={notifications}
-          onNotificationClick={handleNotificationClick}
-          onMarkAsRead={handleMarkAsRead}
-          onMarkAllAsRead={handleMarkAllAsRead}
-        />
+        <TopBar user={user} />
       </Header>
       <Layout style={{ height: 'calc(100vh - 60px)' }}>
         <Sider
@@ -110,17 +74,6 @@ function OrdererLayout() {
           <Outlet />
         </Content>
       </Layout>
-
-      {/* 聊天弹框 */}
-      <ChatModal
-        open={chatOpen}
-        order={chatOrder}
-        currentUser={user}
-        onCancel={() => {
-          setChatOpen(false);
-          setChatOrder(null);
-        }}
-      />
     </Layout>
   );
 }
