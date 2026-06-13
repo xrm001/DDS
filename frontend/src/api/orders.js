@@ -43,6 +43,25 @@ export const getOrderList = async (creatorId) => {
 };
 
 /**
+ * 获取接单人的订单列表
+ * @param {number} receiverId - 接单人ID
+ * @returns {Promise} 订单列表
+ */
+export const getReceiverOrderList = async (receiverId) => {
+  try {
+    const response = await axios.get(`${API_BASE}/orders/receiver-list`, {
+      params: { receiver_id: receiverId }
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw error;
+  }
+};
+
+/**
  * 获取订单沟通消息
  * @param {number} orderId - 订单ID
  * @returns {Promise} 消息列表

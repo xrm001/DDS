@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Card, Space, Empty, Input, Badge, Tooltip, Button, message } from 'antd';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, Space, Empty, Input, Badge, Tooltip, Button, message, Spin } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import ReceiverOrderTable from '../../components/receiver/ReceiverOrderTable';
@@ -7,10 +7,11 @@ import SubmitAcceptanceModal from '../../components/receiver/modals/SubmitAccept
 import ReviewHistoryModal from '../../components/receiver/modals/ReviewHistoryModal';
 import AcceptOrderModal from '../../components/receiver/modals/AcceptOrderModal';
 import ReceiverEvaluationModal from '../../components/receiver/modals/ReceiverEvaluationModal';
+import AssignModal from '../../components/receiver/modals/AssignModal';
 import DetailModal from '../../components/orderer/modals/DetailModal';
 import ChatModal from '../../components/orderer/modals/ChatModal';
 import OrderFilterModal from '../../components/orderer/modals/OrderFilterModal';
-import { MOCK_ORDERS } from '../../mock/orders';
+import { getReceiverOrderList } from '../../api/orders';
 
 // 接单人订单管理页（与下单人订单列表操作区设计风格一致）
 function ReceiverOrderManage() {
@@ -23,15 +24,48 @@ function ReceiverOrderManage() {
     }
   }, []);
 
-  // 仅保留分派给当前接单人的订单；若当前登录用户未匹配任何订单，fallback 为全部（便于演示）
-  const initialOrders = useMemo(() => {
-    const myId = currentUser?.userId;
-    if (!myId) return MOCK_ORDERS;
-    const mine = MOCK_ORDERS.filter((o) => o.receiver_id === myId);
-    return mine.length > 0 ? mine : MOCK_ORDERS;
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 从后端加载订单数据
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const myId = currentUser?.userId;
+      if (!myId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const result = await getReceiverOrderList(myId);
+        if (result.success) {
+          setOrders(result.data || []);
+        } else {
+          message.error(result.message || '加载订单失败');
+        }
+      } catch (error) {
+        console.error('加载订单失败:', error);
+        message.error('加载订单失败: ' + (error.message || '未知错误'));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
   }, [currentUser]);
 
-  const [orders, setOrders] = useState(initialOrders);
+  // 刷新订单列表
+  const refreshOrders = async () => {
+    const myId = currentUser?.userId;
+    if (!myId) return;
+    try {
+      const result = await getReceiverOrderList(myId);
+      if (result.success) {
+        setOrders(result.data || []);
+      }
+    } catch (error) {
+      console.error('刷新订单失败:', error);
+    }
+  };
 
   // 弹框状态
   const [detailOpen, setDetailOpen] = useState(false);
@@ -41,7 +75,14 @@ function ReceiverOrderManage() {
   const [acceptOpen, setAcceptOpen] = useState(false);
   // 接单人评价弹框（对订单/下单人的评价）
   const [receiverEvalOpen, setReceiverEvalOpen] = useState(false);
+  // 组长分配弹框
+  const [assignOpen, setAssignOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
+
+  // 判断当前用户是否为接单组长
+  const isGroupLeader = useMemo(() => {
+    return currentUser?.roles?.some(r => r.role_name === '接单组长');
+  }, [currentUser]);
 
   // 搜索与筛选
   const [searchText, setSearchText] = useState('');
@@ -306,23 +347,30 @@ function ReceiverOrderManage() {
         }
         styles={{ body: { padding: 16 } }}
       >
-        {filteredOrders.length > 0 ? (
-          <ReceiverOrderTable
-            dataSource={filteredOrders}
-            onAccept={handleAccept}
-            onSubmit={handleSubmit}
-            onDetail={handleDetail}
-            onChat={handleChat}
-            onHistory={handleHistory}
-            onEvaluate={handleEvaluate}
-          />
-        ) : (
-          <Empty
-            description={
-              searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'
-            }
-          />
-        )}
+        <Spin spinning={loading}>
+          {filteredOrders.length > 0 ? (
+            <ReceiverOrderTable
+              dataSource={filteredOrders}
+              onAccept={handleAccept}
+              onSubmit={handleSubmit}
+              onDetail={handleDetail}
+              onChat={handleChat}
+              onHistory={handleHistory}
+              onEvaluate={handleEvaluate}
+              onAssign={(order) => {
+                setActiveOrder(order);
+                setAssignOpen(true);
+              }}
+              isGroupLeader={isGroupLeader}
+            />
+          ) : (
+            <Empty
+              description={
+                searchText || activeFilterCount > 0 ? '没有符合条件的订单' : '暂无订单数据'
+              }
+            />
+          )}
+        </Spin>
       </Card>
 
       {/* 弹框 */}
@@ -357,6 +405,17 @@ function ReceiverOrderManage() {
         order={activeOrder}
         onCancel={() => setReceiverEvalOpen(false)}
         onOk={handleReceiverEvalOk}
+      />
+      <AssignModal
+        open={assignOpen}
+        order={activeOrder}
+        leaderId={currentUser?.userId}
+        onCancel={() => setAssignOpen(false)}
+        onSuccess={() => {
+          setAssignOpen(false);
+          // 重新加载订单列表
+          window.location.reload();
+        }}
       />
       <OrderFilterModal
         open={filterOpen}

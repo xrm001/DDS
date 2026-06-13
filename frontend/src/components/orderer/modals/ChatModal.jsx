@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, Button, Upload, Image, Empty, message, Tag, Spin } from 'antd';
-import { SendOutlined, PictureOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { SendOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getOrderMessages, sendMessage, markMessagesRead } from '../../../api/orders';
 
@@ -304,15 +304,7 @@ function ChatModal({ open, order, currentUser, onCancel }) {
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.psd,.ai"
               multiple
             >
-              <Button icon={<PaperClipOutlined />}>添加附件</Button>
-            </Upload>
-            <Upload 
-              beforeUpload={handlePickFiles} 
-              showUploadList={false} 
-              accept="image/*"
-              multiple
-            >
-              <Button icon={<PictureOutlined />}>图片</Button>
+              <Button icon={<PaperClipOutlined />}>添加文件</Button>
             </Upload>
           </div>
           <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>

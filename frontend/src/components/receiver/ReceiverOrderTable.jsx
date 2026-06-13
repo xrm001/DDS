@@ -5,6 +5,7 @@ import {
   AuditOutlined,
   StarFilled,
   StarOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons';
 import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES } from '../../constants/enums';
 
@@ -21,6 +22,8 @@ const getPriority = (v) => PRIORITIES.find((p) => p.value === v);
 //   onChat(order)         - 沟通
 //   onHistory(order)      - 审核历史（只读）
 //   onEvaluate(order)     - 接单人对订单的评价（打开 ReceiverEvaluationModal）
+//   onAssign(order)       - 组长分配（仅接单组长可见）
+//   isGroupLeader: boolean - 是否为接单组长
 function ReceiverOrderTable({
   dataSource,
   onAccept,
@@ -29,6 +32,8 @@ function ReceiverOrderTable({
   onChat,
   onHistory,
   onEvaluate,
+  onAssign,
+  isGroupLeader = false,
 }) {
   const columns = [
     {
@@ -58,16 +63,6 @@ function ReceiverOrderTable({
       key: 'order_type',
       width: 100,
       render: (t) => <Tag color={ORDER_TYPES[t].color}>{ORDER_TYPES[t].label}</Tag>,
-    },
-    {
-      title: '优先级',
-      dataIndex: 'priority',
-      key: 'priority',
-      width: 80,
-      render: (p) => {
-        const pri = getPriority(p);
-        return pri ? <Tag color={pri.color}>{pri.label}</Tag> : '-';
-      },
     },
     {
       title: '下单时间',
@@ -199,14 +194,26 @@ function ReceiverOrderTable({
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 220,
       fixed: 'right',
       render: (_, record) => {
         const status = record.status;
         const isPendingReview = status === 3;
+        // 组长可对status=0（待接单）的订单进行分配
+        const canAssign = isGroupLeader && status === 0;
 
         return (
           <Space size={4} wrap>
+            {canAssign && (
+              <Button
+                size="small"
+                type="link"
+                icon={<UserAddOutlined />}
+                onClick={() => onAssign(record)}
+              >
+                分配
+              </Button>
+            )}
             {isPendingReview && (
               <Button
                 size="small"

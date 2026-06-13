@@ -9,6 +9,7 @@ export const BUSINESS_TASK_TYPES = [
 // 运营下单人/运营主管/新媒体运营主管/新媒体运营下单人/市场运营部门经理可选
 // 新品开发对应 护肤新品(6)+医药新品(7)+香水新品(8) 三个子类型
 export const OPERATION_TASK_TYPES = [
+  { value: 2, label: '全案设计', code: 'brand' },
   { value: 12, label: '新品开发', code: 'new_product', subTypes: [6, 7, 8] },
   { value: 9, label: '海报设计', code: 'poster' },
   { value: 14, label: '店铺设计', code: 'shop' },

@@ -177,3 +177,14 @@ body:has(.login-container) {
   padding-top: 16px;
   border-top: 1px dashed #ddd;
 }
+
+/* 修改单行样式 */
+.modification-order-row td {
+  background: #fafafa !important;
+}
+.modification-order-row:hover td {
+  background: #f0f0f0 !important;
+}
+.modification-order-row {
+  border-left: 3px solid #d9d9d9;
+}

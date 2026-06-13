@@ -1,7 +1,7 @@
 import { Table, Tag, Button, Space, Badge, Tooltip, Popconfirm, Popover } from 'antd';
-import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { MessageOutlined, EditOutlined, RollbackOutlined, InfoCircleOutlined, FileSyncOutlined, StarOutlined, StarFilled, AuditOutlined, ArrowUpOutlined, UserOutlined, ClockCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { ORDER_STATUS, ORDER_TYPES, TASK_TYPES, PRIORITIES, DEAL_STATUS, CUT_IN_LINE_STATUS } from '../../constants/enums';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import ReceiverQueueModal from './modals/ReceiverQueueModal';
 import CutInLineModal from './modals/CutInLineModal';
@@ -40,6 +40,36 @@ function OrderTable({
   const [cutInLineProcessOpen, setCutInLineProcessOpen] = useState(false);
   const [cutInLineProcessData, setCutInLineProcessData] = useState(null);
 
+  // 数据预处理：将修改单紧接原始订单排列
+  const groupedData = useMemo(() => {
+    const originals = dataSource.filter(o => o.order_type !== 2);
+    const modifications = dataSource.filter(o => o.order_type === 2);
+
+    // 按 original_order_id 分组修改单
+    const modMap = {};
+    modifications.forEach(m => {
+      const key = m.original_order_id;
+      if (!modMap[key]) modMap[key] = [];
+      modMap[key].push({ ...m, _isModification: true });
+    });
+
+    // 每组修改单按创建时间排序
+    Object.values(modMap).forEach(arr => {
+      arr.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    });
+
+    // 拼接：每个原始订单后面紧跟其修改单
+    const result = [];
+    originals.forEach(o => {
+      result.push({ ...o, _isModification: false });
+      if (modMap[o.id]) {
+        result.push(...modMap[o.id]);
+      }
+    });
+
+    return result;
+  }, [dataSource]);
+
   // 获取接单人的所有订单
   const getReceiverOrders = (receiverId) => {
     return allOrders.filter(o => o.receiver_id === receiverId);
@@ -49,8 +79,19 @@ function OrderTable({
       title: '订单编号',
       dataIndex: 'order_no',
       key: 'order_no',
-      width: 160,
+      width: 180,
       fixed: 'left',
+      render: (text, record) => {
+        if (record._isModification) {
+          return (
+            <span style={{ color: '#8c8c8c', fontSize: 12 }}>
+              <LinkOutlined style={{ marginRight: 4 }} />
+              {'\u00A0\u00A0\u00A0\u00A0'}{text}
+            </span>
+          );
+        }
+        return text;
+      },
     },
     {
       title: '任务名称',
@@ -395,7 +436,8 @@ function OrderTable({
         rowKey="id"
         size="middle"
         columns={columns}
-        dataSource={dataSource}
+        dataSource={groupedData}
+        rowClassName={(record) => record._isModification ? 'modification-order-row' : ''}
         scroll={{ x: 1700, y: 420 }}
         pagination={{
           defaultPageSize: 10,

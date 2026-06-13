@@ -2,6 +2,20 @@ const path = require('path');
 const dotenv = require('dotenv');
 const open = require('open');
 const { execSync } = require('child_process');
+const os = require('os');
+
+// 获取本机局域网 IPv4 地址
+function getLanIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
 // 加载根目录的 .env 配置（必须在其他模块加载前执行）
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -63,12 +77,12 @@ app.listen(PORT, '0.0.0.0', async () => {
   // 启动前先构建前端
   buildFrontend();
   
-  console.log(`[DDS 后端] 服务已启动：http://localhost:${PORT}`);
-  console.log(`[DDS 后端] 运行环境：${process.env.NODE_ENV || 'development'}`);
-  console.log(`[DDS 后端] 前端页面：http://localhost:${PORT}`);
+  const LAN_IP = getLanIP();
+  const frontendUrl = `http://${LAN_IP}:${PORT}`;
   
-  // 启动后自动打开浏览器访问前端页面
-  const frontendUrl = `http://localhost:${PORT}`;
+  console.log(`[DDS 后端] 服务已启动`);
+  console.log(`[DDS 后端] 局域网访问：${frontendUrl}`);
+  console.log(`[DDS 后端] 运行环境：${process.env.NODE_ENV || 'development'}`);
   console.log(`[DDS 后端] 正在打开浏览器...`);
   
   try {
